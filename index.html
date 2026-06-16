@@ -74,6 +74,52 @@ body{font-family:'Noto Sans Devanagari',sans-serif;background:linear-gradient(13
 .toast.show{opacity:1;transform:translateY(0)}
 .toast.ok{border-left:4px solid var(--green)}
 .toast.err{border-left:4px solid var(--red)}
+
+/* ── DASHBOARD GRID ── */
+.dgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:11px;margin-bottom:16px}
+.dcard{background:linear-gradient(135deg,var(--navy),var(--light-navy));border-radius:13px;padding:18px 15px;color:#fff;text-align:center;cursor:pointer;transition:var(--t);border:1px solid rgba(255,255,255,.1)}
+.dcard:hover{transform:translateY(-3px);box-shadow:0 10px 26px rgba(0,0,0,.3)}
+.dcard .ic{font-size:1.9rem;margin-bottom:6px}
+.dcard .nm{font-size:.92rem;font-weight:700;color:var(--gold)}
+.dcard .lb{font-size:.7rem;color:rgba(255,255,255,.72);margin-top:2px}
+
+/* ── BREADCRUMB ── */
+.crumb{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:.82rem;color:var(--muted);margin-bottom:14px}
+.crumb span{cursor:pointer;color:var(--royal);font-weight:600}
+.crumb span.cur{color:var(--text);cursor:default;font-weight:700}
+
+/* ── TREE LIST (Syllabus Manager) ── */
+.tree-item{background:#f7f8fc;border:1px solid #e8eaf5;border-radius:10px;padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:pointer;transition:var(--t)}
+.tree-item:hover{background:#eef0fa;border-color:var(--saffron)}
+.tree-item .ti-name{font-weight:600;font-size:.88rem;display:flex;align-items:center;gap:8px}
+.tree-item .ti-count{font-size:.7rem;color:var(--muted);background:#fff;padding:2px 8px;border-radius:20px}
+.tree-actions{display:flex;gap:6px;flex-shrink:0}
+.icon-btn{background:none;border:none;cursor:pointer;font-size:.95rem;padding:5px 7px;border-radius:6px;transition:var(--t);width:auto}
+.icon-btn:hover{background:#fff;transform:scale(1.1)}
+.icon-btn.del:hover{background:#ffebee}
+
+/* ── ADD ROW ── */
+.add-row{display:flex;gap:8px;margin-top:10px}
+.add-row input{flex:1;padding:11px 13px;border:1.5px solid #e0e4f0;border-radius:9px;font-family:inherit;font-size:.86rem;outline:none}
+.add-row input:focus{border-color:var(--saffron)}
+.add-row button{width:auto;padding:11px 16px;flex-shrink:0}
+
+/* ── EMPTY STATE ── */
+.empty-state{text-align:center;padding:30px 15px;color:var(--muted);font-size:.85rem}
+.empty-state .em-ic{font-size:2.2rem;margin-bottom:8px;opacity:.5}
+
+/* ── INLINE EDIT ── */
+.edit-input{flex:1;padding:7px 10px;border:1.5px solid var(--saffron);border-radius:7px;font-family:inherit;font-size:.86rem;outline:none}
+
+/* ── MODAL CONFIRM ── */
+.modal-overlay{position:fixed;inset:0;background:rgba(13,27,62,.55);z-index:500;display:flex;align-items:center;justify-content:center;padding:20px}
+.modal-box{background:#fff;border-radius:16px;padding:24px;max-width:340px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.modal-box h3{font-size:1rem;color:var(--deep-navy);margin-bottom:8px}
+.modal-box p{font-size:.83rem;color:var(--muted);margin-bottom:18px;line-height:1.5}
+.modal-actions{display:flex;gap:10px}
+.modal-actions .btn{padding:10px}
+.btn-secondary{background:#f0f1f7;color:var(--text)}
+.btn-danger{background:var(--red);color:#fff}
 </style>
 </head>
 <body>
@@ -280,20 +326,278 @@ async function logout() {
 }
 
 // ══════════════════════════════════════════════
-// SECTION: HOME (placeholder — Session 4 में Dashboard बनेगा)
+// SECTION: HOME (Dashboard)
 // ══════════════════════════════════════════════
 function renderHome() {
   document.getElementById('hdrUserBox').style.display = 'block';
   const root = document.getElementById('appRoot');
-  const roleLabel = currentProfile?.role === 'admin' ? '👑 Admin' : '👤 User';
+  const isAdmin = currentProfile?.role === 'admin';
   root.innerHTML = `
-  <div class="home-wrap">
-    <div class="card">
-      <div class="ctitle">स्वागत है, ${currentProfile?.full_name || 'दोस्त'}! 🙏</div>
-      <p style="color:var(--muted);font-size:.85rem;margin-bottom:6px">Role: ${roleLabel}</p>
-      <p style="color:var(--muted);font-size:.82rem">Login/Auth काम कर रहा है ✅<br>Dashboard, Quiz, Syllabus आगे की sessions में बनेंगे।</p>
+  <div class="card">
+    <div class="ctitle">स्वागत है, ${currentProfile?.full_name || 'दोस्त'}! 🙏</div>
+    <div class="dgrid">
+      ${isAdmin ? `
+      <div class="dcard" onclick="goSyllabusManager()">
+        <div class="ic">📚</div>
+        <div class="nm">सिलेबस</div>
+        <div class="lb">Subject/Topic Manage</div>
+      </div>` : ''}
+      <div class="dcard" style="opacity:.5;cursor:default">
+        <div class="ic">📝</div>
+        <div class="nm">क्विज़</div>
+        <div class="lb">आगे की session में</div>
+      </div>
     </div>
   </div>`;
+}
+
+// ══════════════════════════════════════════════
+// SECTION: SYLLABUS MANAGER (Admin only)
+// — Subject → Topic → Micro-topic, tree-structure
+// ══════════════════════════════════════════════
+let smLevel = 'subjects';   // 'subjects' | 'topics' | 'microtopics'
+let smSubject = null;       // selected subject {id,name}
+let smTopic = null;         // selected topic {id,name}
+let smCache = { subjects: [], topics: [], microtopics: [] };
+
+function goSyllabusManager() {
+  smLevel = 'subjects';
+  smSubject = null;
+  smTopic = null;
+  loadSubjects();
+}
+
+async function loadSubjects() {
+  renderSyllabusShell('लोड हो रहा है...');
+  const { data, error } = await sb.from('subjects').select('*').order('sort_order');
+  if (error) { showToast('Subjects लोड नहीं हुए: ' + error.message, 'err'); return; }
+  smCache.subjects = data || [];
+  // हर subject के अंदर topic count गिनने के लिए
+  const { data: allTopics } = await sb.from('topics').select('id, subject_id');
+  smCache._topicCounts = {};
+  (allTopics || []).forEach(t => { smCache._topicCounts[t.subject_id] = (smCache._topicCounts[t.subject_id] || 0) + 1; });
+  smLevel = 'subjects';
+  renderSyllabusManager();
+}
+
+async function loadTopics(subject) {
+  smSubject = subject;
+  renderSyllabusShell('लोड हो रहा है...');
+  const { data, error } = await sb.from('topics').select('*').eq('subject_id', subject.id).order('sort_order');
+  if (error) { showToast('Topics लोड नहीं हुए: ' + error.message, 'err'); return; }
+  smCache.topics = data || [];
+  const { data: allMicro } = await sb.from('micro_topics').select('id, topic_id');
+  smCache._microCounts = {};
+  (allMicro || []).forEach(m => { smCache._microCounts[m.topic_id] = (smCache._microCounts[m.topic_id] || 0) + 1; });
+  smLevel = 'topics';
+  renderSyllabusManager();
+}
+
+async function loadMicroTopics(topic) {
+  smTopic = topic;
+  renderSyllabusShell('लोड हो रहा है...');
+  const { data, error } = await sb.from('micro_topics').select('*').eq('topic_id', topic.id).order('sort_order');
+  if (error) { showToast('Micro-topics लोड नहीं हुए: ' + error.message, 'err'); return; }
+  smCache.microtopics = data || [];
+  smLevel = 'microtopics';
+  renderSyllabusManager();
+}
+
+function renderSyllabusShell(msg) {
+  document.getElementById('appRoot').innerHTML = `<div class="card"><p style="color:var(--muted);font-size:.85rem">${msg}</p></div>`;
+}
+
+function smCrumbHtml() {
+  let html = `<div class="crumb">`;
+  html += `<span onclick="renderHome()">🏠 होम</span> ›`;
+  html += smLevel === 'subjects'
+    ? ` <span class="cur">सिलेबस</span>`
+    : ` <span onclick="loadSubjects()">सिलेबस</span> ›`;
+  if (smLevel === 'topics') html += ` <span class="cur">${smSubject.name}</span>`;
+  if (smLevel === 'microtopics') {
+    html += ` <span onclick="loadTopics(smSubject)">${smSubject.name}</span> › <span class="cur">${smTopic.name}</span>`;
+  }
+  html += `</div>`;
+  return html;
+}
+
+function renderSyllabusManager() {
+  const root = document.getElementById('appRoot');
+
+  if (smLevel === 'subjects') {
+    const rows = smCache.subjects.length ? smCache.subjects.map(s => `
+      <div class="tree-item" id="row-${s.id}">
+        <div class="ti-name" onclick="loadTopicsById('${s.id}')">📖 <span id="name-${s.id}">${s.name}</span>
+          <span class="ti-count">${smCache._topicCounts[s.id] || 0} topics</span>
+        </div>
+        <div class="tree-actions">
+          <button class="icon-btn" onclick="event.stopPropagation();startEditSubject('${s.id}','${s.name.replace(/'/g,"\\'")}')">✏️</button>
+          <button class="icon-btn del" onclick="event.stopPropagation();confirmDelete('subject','${s.id}','${s.name.replace(/'/g,"\\'")}')">🗑️</button>
+        </div>
+      </div>`).join('') : `<div class="empty-state"><div class="em-ic">📭</div>अभी कोई Subject नहीं है। नीचे से जोड़ें।</div>`;
+
+    root.innerHTML = `
+    <div class="card">
+      ${smCrumbHtml()}
+      <div class="ctitle">📚 सिलेबस — Subjects</div>
+      ${rows}
+      <div class="add-row">
+        <input type="text" id="newSubjectInput" placeholder="नया Subject नाम लिखें (जैसे: इतिहास)">
+        <button class="btn btn-primary" onclick="addSubject()">+ जोड़ें</button>
+      </div>
+    </div>`;
+    return;
+  }
+
+  if (smLevel === 'topics') {
+    const rows = smCache.topics.length ? smCache.topics.map(t => `
+      <div class="tree-item" id="row-${t.id}">
+        <div class="ti-name" onclick="loadMicroTopics(${JSON.stringify(t).replace(/"/g, '&quot;')})">📑 <span id="name-${t.id}">${t.name}</span>
+          <span class="ti-count">${smCache._microCounts[t.id] || 0} micro-topics</span>
+        </div>
+        <div class="tree-actions">
+          <button class="icon-btn" onclick="event.stopPropagation();startEditTopic('${t.id}','${t.name.replace(/'/g,"\\'")}')">✏️</button>
+          <button class="icon-btn del" onclick="event.stopPropagation();confirmDelete('topic','${t.id}','${t.name.replace(/'/g,"\\'")}')">🗑️</button>
+        </div>
+      </div>`).join('') : `<div class="empty-state"><div class="em-ic">📭</div>इस Subject में अभी कोई Topic नहीं है।</div>`;
+
+    root.innerHTML = `
+    <div class="card">
+      ${smCrumbHtml()}
+      <div class="ctitle">📑 ${smSubject.name} — Topics</div>
+      ${rows}
+      <div class="add-row">
+        <input type="text" id="newTopicInput" placeholder="नया Topic नाम लिखें (जैसे: प्राचीन भारत)">
+        <button class="btn btn-primary" onclick="addTopic()">+ जोड़ें</button>
+      </div>
+    </div>`;
+    return;
+  }
+
+  if (smLevel === 'microtopics') {
+    const rows = smCache.microtopics.length ? smCache.microtopics.map(m => `
+      <div class="tree-item" style="cursor:default" id="row-${m.id}">
+        <div class="ti-name">📄 <span id="name-${m.id}">${m.name}</span></div>
+        <div class="tree-actions">
+          <button class="icon-btn" onclick="startEditMicro('${m.id}','${m.name.replace(/'/g,"\\'")}')">✏️</button>
+          <button class="icon-btn del" onclick="confirmDelete('microtopic','${m.id}','${m.name.replace(/'/g,"\\'")}')">🗑️</button>
+        </div>
+      </div>`).join('') : `<div class="empty-state"><div class="em-ic">📭</div>इस Topic में अभी कोई Micro-topic नहीं है।</div>`;
+
+    root.innerHTML = `
+    <div class="card">
+      ${smCrumbHtml()}
+      <div class="ctitle">📄 ${smTopic.name} — Micro-topics</div>
+      ${rows}
+      <div class="add-row">
+        <input type="text" id="newMicroInput" placeholder="नया Micro-topic नाम लिखें (जैसे: सिंधु घाटी सभ्यता)">
+        <button class="btn btn-primary" onclick="addMicroTopic()">+ जोड़ें</button>
+      </div>
+    </div>`;
+    return;
+  }
+}
+
+// ── ADD ──
+async function addSubject() {
+  const input = document.getElementById('newSubjectInput');
+  const name = input.value.trim();
+  if (!name) { showToast('नाम लिखें', 'err'); return; }
+  const sort_order = smCache.subjects.length;
+  const { error } = await sb.from('subjects').insert({ name, sort_order });
+  if (error) { showToast('जोड़ने में दिक्कत: ' + error.message, 'err'); return; }
+  showToast('Subject जुड़ गया ✅', 'ok');
+  loadSubjects();
+}
+
+async function addTopic() {
+  const input = document.getElementById('newTopicInput');
+  const name = input.value.trim();
+  if (!name) { showToast('नाम लिखें', 'err'); return; }
+  const sort_order = smCache.topics.length;
+  const { error } = await sb.from('topics').insert({ name, subject_id: smSubject.id, sort_order });
+  if (error) { showToast('जोड़ने में दिक्कत: ' + error.message, 'err'); return; }
+  showToast('Topic जुड़ गया ✅', 'ok');
+  loadTopics(smSubject);
+}
+
+async function addMicroTopic() {
+  const input = document.getElementById('newMicroInput');
+  const name = input.value.trim();
+  if (!name) { showToast('नाम लिखें', 'err'); return; }
+  const sort_order = smCache.microtopics.length;
+  const { error } = await sb.from('micro_topics').insert({ name, topic_id: smTopic.id, sort_order });
+  if (error) { showToast('जोड़ने में दिक्कत: ' + error.message, 'err'); return; }
+  showToast('Micro-topic जुड़ गया ✅', 'ok');
+  loadMicroTopics(smTopic);
+}
+
+// ── EDIT (inline) ──
+function startEditSubject(id, oldName) { startInlineEdit(id, oldName, 'subjects'); }
+function startEditTopic(id, oldName) { startInlineEdit(id, oldName, 'topics'); }
+function startEditMicro(id, oldName) { startInlineEdit(id, oldName, 'micro_topics'); }
+
+function startInlineEdit(id, oldName, table) {
+  const nameSpan = document.getElementById('name-' + id);
+  if (!nameSpan) return;
+  nameSpan.outerHTML = `<input class="edit-input" id="edit-${id}" value="${oldName.replace(/"/g,'&quot;')}" onkeydown="if(event.key==='Enter')saveInlineEdit('${id}','${table}')">`;
+  document.getElementById('edit-' + id).focus();
+  const row = document.getElementById('row-' + id);
+  const actions = row.querySelector('.tree-actions');
+  actions.innerHTML = `
+    <button class="icon-btn" onclick="saveInlineEdit('${id}','${table}')">✅</button>
+    <button class="icon-btn" onclick="${table==='subjects'?'loadSubjects()':table==='topics'?'loadTopics(smSubject)':'loadMicroTopics(smTopic)'}">✖️</button>`;
+}
+
+async function saveInlineEdit(id, table) {
+  const input = document.getElementById('edit-' + id);
+  const newName = input.value.trim();
+  if (!newName) { showToast('नाम खाली नहीं हो सकता', 'err'); return; }
+  const { error } = await sb.from(table).update({ name: newName }).eq('id', id);
+  if (error) { showToast('Update नहीं हुआ: ' + error.message, 'err'); return; }
+  showToast('अपडेट हो गया ✅', 'ok');
+  if (table === 'subjects') loadSubjects();
+  else if (table === 'topics') loadTopics(smSubject);
+  else loadMicroTopics(smTopic);
+}
+
+// ── DELETE (confirm modal) ──
+let pendingDelete = null;
+function confirmDelete(type, id, name) {
+  pendingDelete = { type, id };
+  const warnMap = {
+    subject: 'इसके अंदर के सभी Topics, Micro-topics और Questions भी डिलीट हो जाएंगे।',
+    topic: 'इसके अंदर के सभी Micro-topics और Questions भी डिलीट हो जाएंगे।',
+    microtopic: 'इसके अंदर के सभी Questions भी डिलीट हो जाएंगे।'
+  };
+  document.body.insertAdjacentHTML('beforeend', `
+  <div class="modal-overlay" id="delModal">
+    <div class="modal-box">
+      <h3>⚠️ "${name}" डिलीट करें?</h3>
+      <p>${warnMap[type]} यह पलटा नहीं जा सकता।</p>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeDeleteModal()">रद्द करें</button>
+        <button class="btn btn-danger" onclick="doDelete()">हाँ, डिलीट करें</button>
+      </div>
+    </div>
+  </div>`);
+}
+
+function closeDeleteModal() {
+  document.getElementById('delModal')?.remove();
+  pendingDelete = null;
+}
+
+async function doDelete() {
+  if (!pendingDelete) return;
+  const tableMap = { subject: 'subjects', topic: 'topics', microtopic: 'micro_topics' };
+  const { error } = await sb.from(tableMap[pendingDelete.type]).delete().eq('id', pendingDelete.id);
+  closeDeleteModal();
+  if (error) { showToast('डिलीट नहीं हुआ: ' + error.message, 'err'); return; }
+  showToast('डिलीट हो गया ✅', 'ok');
+  if (pendingDelete.type === 'subject') loadSubjects();
+  else if (pendingDelete.type === 'topic') loadTopics(smSubject);
+  else loadMicroTopics(smTopic);
 }
 
 // ══════════════════════════════════════════════
