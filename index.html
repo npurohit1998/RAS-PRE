@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0D1B3E">
+<meta name="description" content="RAS Pre तैयारी — Quiz App">
+<link rel="manifest" href="manifest.json">
+<title>RAS Pre</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;500;600;700;800&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{
+  --saffron:#FF6B00;--gold:#FFB300;--deep-navy:#0D1B3E;
+  --navy:#1a2a5e;--light-navy:#2a3f7e;--royal:#3355aa;
+  --green:#00C853;--red:#FF1744;--text:#1a0a3e;--muted:#5a5a7a;
+  --card:#fff;--shadow:0 6px 24px rgba(13,27,62,.15);--r:14px;--t:.22s ease;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Noto Sans Devanagari',sans-serif;background:linear-gradient(135deg,#0D1B3E,#1a2a5e 50%,#2a1060);min-height:100vh;color:var(--text)}
+
+/* ── HEADER ── */
+.hdr{background:linear-gradient(90deg,#0D1B3E,#1a2a5e);border-bottom:3px solid var(--saffron);position:sticky;top:0;z-index:200;box-shadow:0 4px 20px rgba(0,0,0,.4)}
+.hdr-in{max-width:1200px;margin:0 auto;padding:10px 18px;display:flex;align-items:center;justify-content:space-between}
+.logo{display:flex;align-items:center;gap:10px}
+.logo-ic{width:42px;height:42px;background:linear-gradient(135deg,var(--saffron),var(--gold));border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.logo-tx .t1{color:#fff;font-size:1rem;font-weight:700;letter-spacing:.5px}
+.logo-tx .t2{color:var(--gold);font-size:.68rem;font-weight:500}
+
+/* ── LAYOUT ── */
+.app{max-width:1200px;margin:0 auto;padding:14px 14px}
+
+/* ── CARD ── */
+.card{background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);padding:18px;margin-bottom:13px}
+.ctitle{font-size:.95rem;font-weight:700;color:var(--deep-navy);border-left:4px solid var(--saffron);padding-left:9px;margin-bottom:13px}
+
+/* ── BUTTONS ── */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:11px 18px;border-radius:10px;border:none;font-family:inherit;font-weight:700;font-size:.88rem;cursor:pointer;transition:var(--t);width:100%}
+.btn-primary{background:linear-gradient(135deg,var(--saffron),var(--gold));color:#fff;box-shadow:0 4px 14px rgba(255,107,0,.35)}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 7px 18px rgba(255,107,0,.45)}
+.btn-primary:disabled{opacity:.55;cursor:not-allowed;transform:none}
+.btn-google{background:#fff;color:var(--text);border:1.5px solid #ddd}
+.btn-link{background:transparent;color:var(--royal);font-weight:600;font-size:.82rem;width:auto;padding:6px 0}
+
+/* ── AUTH ── */
+.auth-wrap{min-height:calc(100vh - 70px);display:flex;align-items:center;justify-content:center;padding:20px}
+.auth-card{background:var(--card);border-radius:18px;box-shadow:0 16px 50px rgba(0,0,0,.3);padding:30px 26px;max-width:380px;width:100%}
+.auth-logo{text-align:center;margin-bottom:6px;font-size:2.1rem}
+.auth-title{text-align:center;font-size:1.15rem;font-weight:800;color:var(--deep-navy);margin-bottom:3px}
+.auth-sub{text-align:center;font-size:.78rem;color:var(--muted);margin-bottom:22px}
+.field{margin-bottom:14px}
+.field label{display:block;font-size:.78rem;font-weight:600;color:var(--text);margin-bottom:5px}
+.field input{width:100%;padding:11px 13px;border:1.5px solid #e0e4f0;border-radius:9px;font-family:inherit;font-size:.88rem;outline:none;transition:var(--t)}
+.field input:focus{border-color:var(--saffron)}
+.auth-divider{display:flex;align-items:center;gap:10px;margin:16px 0;color:var(--muted);font-size:.75rem}
+.auth-divider::before,.auth-divider::after{content:'';flex:1;height:1px;background:#e0e4f0}
+.auth-switch{text-align:center;margin-top:16px;font-size:.82rem;color:var(--muted)}
+.auth-switch a{color:var(--saffron);font-weight:700;cursor:pointer;text-decoration:none}
+.auth-msg{padding:9px 12px;border-radius:8px;font-size:.78rem;margin-bottom:14px;display:none}
+.auth-msg.show{display:block}
+.auth-msg.err{background:#ffebee;color:#c62828;border:1px solid #ffcdd2}
+.auth-msg.ok{background:#e8f5e9;color:#2e7d32;border:1px solid #c8e6c9}
+.google-note{font-size:.7rem;color:var(--muted);text-align:center;margin-top:4px}
+.spinner{width:16px;height:16px;border:2.5px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── HOME (placeholder) ── */
+.home-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;padding:20px;text-align:center}
+.home-wrap .card{max-width:420px}
+
+/* ── TOAST ── */
+.toast-box{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:999;display:flex;flex-direction:column;gap:8px;align-items:center}
+.toast{background:var(--deep-navy);color:#fff;padding:11px 20px;border-radius:10px;font-size:.83rem;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,.35);opacity:0;transform:translateY(10px);transition:all .25s ease;max-width:90vw}
+.toast.show{opacity:1;transform:translateY(0)}
+.toast.ok{border-left:4px solid var(--green)}
+.toast.err{border-left:4px solid var(--red)}
+</style>
+</head>
+<body>
+
+<!-- ══════════════════ HEADER ══════════════════ -->
+<div class="hdr">
+  <div class="hdr-in">
+    <div class="logo">
+      <div class="logo-ic">📘</div>
+      <div class="logo-tx">
+        <div class="t1">RAS Pre</div>
+        <div class="t2">तैयारी परीक्षा हेतु</div>
+      </div>
+    </div>
+    <div id="hdrUserBox" style="display:none;color:#fff;font-size:.78rem;cursor:pointer" onclick="logout()">🚪 Logout</div>
+  </div>
+</div>
+
+<!-- ══════════════════ APP ROOT ══════════════════ -->
+<div class="app" id="appRoot">
+  <!-- यहाँ JS से auth-screen या home-screen render होगी -->
+</div>
+
+<!-- ══════════════════ TOAST ══════════════════ -->
+<div class="toast-box" id="toastBox"></div>
+
+<script>
+// ══════════════════════════════════════════════
+// SECTION: SUPABASE INIT
+// ══════════════════════════════════════════════
+// नया Supabase project बनाने के बाद यहाँ डालें (Project Settings → API):
+const SB_URL = 'YAHAN_APNA_SUPABASE_PROJECT_URL_DAALEN';
+const SB_ANON_KEY = 'YAHAN_APNA_SUPABASE_ANON_KEY_DAALEN';
+const sb = supabase.createClient(SB_URL, SB_ANON_KEY);
+
+// ══════════════════════════════════════════════
+// SECTION: TOAST UTILITY
+// ══════════════════════════════════════════════
+function showToast(msg, type='ok') {
+  const box = document.getElementById('toastBox');
+  const t = document.createElement('div');
+  t.className = 'toast ' + type;
+  t.textContent = msg;
+  box.appendChild(t);
+  setTimeout(()=>t.classList.add('show'), 10);
+  setTimeout(()=>{ t.classList.remove('show'); setTimeout(()=>t.remove(), 300); }, 3000);
+}
+
+// ══════════════════════════════════════════════
+// SECTION: AUTH STATE
+// ══════════════════════════════════════════════
+let currentUser = null;
+let currentProfile = null;
+let authMode = 'login'; // 'login' | 'signup' | 'forgot'
+
+async function initAuth() {
+  const { data } = await sb.auth.getSession();
+  if (data.session) {
+    currentUser = data.session.user;
+    await loadProfile();
+    renderHome();
+  } else {
+    renderAuth();
+  }
+
+  sb.auth.onAuthStateChange((event, session) => {
+    if (event === 'SIGNED_IN' && session) {
+      currentUser = session.user;
+      loadProfile().then(renderHome);
+    }
+    if (event === 'SIGNED_OUT') {
+      currentUser = null;
+      currentProfile = null;
+      renderAuth();
+    }
+  });
+}
+
+async function loadProfile() {
+  const { data, error } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
+  if (!error) currentProfile = data;
+}
+
+// ══════════════════════════════════════════════
+// SECTION: AUTH SCREEN (Login / Signup / Forgot)
+// ══════════════════════════════════════════════
+function renderAuth() {
+  document.getElementById('hdrUserBox').style.display = 'none';
+  const root = document.getElementById('appRoot');
+
+  if (authMode === 'signup') {
+    root.innerHTML = `
+    <div class="auth-wrap"><div class="auth-card">
+      <div class="auth-logo">📘</div>
+      <div class="auth-title">नया Account बनाएं</div>
+      <div class="auth-sub">RAS Pre तैयारी शुरू करें</div>
+      <div class="auth-msg" id="authMsg"></div>
+      <div class="field"><label>पूरा नाम</label><input type="text" id="suName" placeholder="अपना नाम लिखें"></div>
+      <div class="field"><label>Email</label><input type="email" id="suEmail" placeholder="you@example.com"></div>
+      <div class="field"><label>Password</label><input type="password" id="suPass" placeholder="कम से कम 6 अक्षर"></div>
+      <button class="btn btn-primary" id="suBtn" onclick="doSignup()">Account बनाएं</button>
+      <div class="auth-divider">या</div>
+      <button class="btn btn-google" disabled>🔵 Google से जारी रखें</button>
+      <div class="google-note">Google Login जल्द आ रहा है</div>
+      <div class="auth-switch">पहले से Account है? <a onclick="authMode='login';renderAuth()">Login करें</a></div>
+    </div></div>`;
+    return;
+  }
+
+  if (authMode === 'forgot') {
+    root.innerHTML = `
+    <div class="auth-wrap"><div class="auth-card">
+      <div class="auth-logo">🔑</div>
+      <div class="auth-title">Password भूल गए?</div>
+      <div class="auth-sub">अपना email डालें, reset link भेजेंगे</div>
+      <div class="auth-msg" id="authMsg"></div>
+      <div class="field"><label>Email</label><input type="email" id="fgEmail" placeholder="you@example.com"></div>
+      <button class="btn btn-primary" id="fgBtn" onclick="doForgotPassword()">Reset Link भेजें</button>
+      <div class="auth-switch">याद आ गया? <a onclick="authMode='login';renderAuth()">Login करें</a></div>
+    </div></div>`;
+    return;
+  }
+
+  // default: login
+  root.innerHTML = `
+  <div class="auth-wrap"><div class="auth-card">
+    <div class="auth-logo">📘</div>
+    <div class="auth-title">RAS Pre में Login करें</div>
+    <div class="auth-sub">अपनी तैयारी जारी रखें</div>
+    <div class="auth-msg" id="authMsg"></div>
+    <div class="field"><label>Email</label><input type="email" id="liEmail" placeholder="you@example.com"></div>
+    <div class="field"><label>Password</label><input type="password" id="liPass" placeholder="अपना password डालें"></div>
+    <button class="btn btn-primary" id="liBtn" onclick="doLogin()">Login करें</button>
+    <div style="text-align:center;margin-top:10px"><a class="btn-link" onclick="authMode='forgot';renderAuth()">Password भूल गए?</a></div>
+    <div class="auth-divider">या</div>
+    <button class="btn btn-google" disabled>🔵 Google से जारी रखें</button>
+    <div class="google-note">Google Login जल्द आ रहा है</div>
+    <div class="auth-switch">Account नहीं है? <a onclick="authMode='signup';renderAuth()">नया बनाएं</a></div>
+  </div></div>`;
+}
+
+function setAuthMsg(text, type) {
+  const el = document.getElementById('authMsg');
+  if (!el) return;
+  el.textContent = text;
+  el.className = 'auth-msg show ' + type;
+}
+
+function setBtnLoading(id, loading, label) {
+  const btn = document.getElementById(id);
+  if (!btn) return;
+  btn.disabled = loading;
+  btn.innerHTML = loading ? '<span class="spinner"></span>' : label;
+}
+
+async function doSignup() {
+  const name = document.getElementById('suName').value.trim();
+  const email = document.getElementById('suEmail').value.trim();
+  const pass = document.getElementById('suPass').value;
+  if (!name || !email || !pass) { setAuthMsg('कृपया सभी फ़ील्ड भरें।', 'err'); return; }
+  if (pass.length < 6) { setAuthMsg('Password कम से कम 6 अक्षर का हो।', 'err'); return; }
+
+  setBtnLoading('suBtn', true);
+  const { error } = await sb.auth.signUp({
+    email, password: pass,
+    options: { data: { full_name: name } }
+  });
+  setBtnLoading('suBtn', false, 'Account बनाएं');
+
+  if (error) { setAuthMsg(error.message, 'err'); return; }
+  setAuthMsg('✅ Account बन गया! अब Login करें।', 'ok');
+  showToast('Account सफलतापूर्वक बना!', 'ok');
+  setTimeout(()=>{ authMode='login'; renderAuth(); }, 1500);
+}
+
+async function doLogin() {
+  const email = document.getElementById('liEmail').value.trim();
+  const pass = document.getElementById('liPass').value;
+  if (!email || !pass) { setAuthMsg('कृपया Email और Password डालें।', 'err'); return; }
+
+  setBtnLoading('liBtn', true);
+  const { error } = await sb.auth.signInWithPassword({ email, password: pass });
+  setBtnLoading('liBtn', false, 'Login करें');
+
+  if (error) { setAuthMsg('Email या Password गलत है।', 'err'); return; }
+  showToast('Login सफल!', 'ok');
+}
+
+async function doForgotPassword() {
+  const email = document.getElementById('fgEmail').value.trim();
+  if (!email) { setAuthMsg('कृपया Email डालें।', 'err'); return; }
+
+  setBtnLoading('fgBtn', true);
+  const { error } = await sb.auth.resetPasswordForEmail(email);
+  setBtnLoading('fgBtn', false, 'Reset Link भेजें');
+
+  if (error) { setAuthMsg(error.message, 'err'); return; }
+  setAuthMsg('✅ Reset link आपके email पर भेज दिया गया है।', 'ok');
+}
+
+async function logout() {
+  await sb.auth.signOut();
+  showToast('Logout हो गया', 'ok');
+}
+
+// ══════════════════════════════════════════════
+// SECTION: HOME (placeholder — Session 4 में Dashboard बनेगा)
+// ══════════════════════════════════════════════
+function renderHome() {
+  document.getElementById('hdrUserBox').style.display = 'block';
+  const root = document.getElementById('appRoot');
+  const roleLabel = currentProfile?.role === 'admin' ? '👑 Admin' : '👤 User';
+  root.innerHTML = `
+  <div class="home-wrap">
+    <div class="card">
+      <div class="ctitle">स्वागत है, ${currentProfile?.full_name || 'दोस्त'}! 🙏</div>
+      <p style="color:var(--muted);font-size:.85rem;margin-bottom:6px">Role: ${roleLabel}</p>
+      <p style="color:var(--muted);font-size:.82rem">Login/Auth काम कर रहा है ✅<br>Dashboard, Quiz, Syllabus आगे की sessions में बनेंगे।</p>
+    </div>
+  </div>`;
+}
+
+// ══════════════════════════════════════════════
+// SECTION: INIT
+// ══════════════════════════════════════════════
+initAuth();
+</script>
+</body>
+</html>
