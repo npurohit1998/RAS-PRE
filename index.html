@@ -120,6 +120,25 @@ body{font-family:'Noto Sans Devanagari',sans-serif;background:linear-gradient(13
 .modal-actions .btn{padding:10px}
 .btn-secondary{background:#f0f1f7;color:var(--text)}
 .btn-danger{background:var(--red);color:#fff}
+
+  /* ── QUESTION MANAGER (Tabs & Forms) ── */
+.tabs{display:flex;gap:8px;margin-bottom:16px;overflow-x:auto;padding-bottom:4px}
+.tab{padding:8px 16px;background:#f0f1f7;border-radius:20px;font-size:.85rem;font-weight:600;color:var(--muted);cursor:pointer;white-space:nowrap;transition:var(--t)}
+.tab.active{background:linear-gradient(135deg,var(--saffron),var(--gold));color:#fff;box-shadow:0 4px 10px rgba(255,107,0,.3)}
+.qm-filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:16px}
+.qm-filters select{padding:10px;border:1.5px solid #e0e4f0;border-radius:8px;font-family:inherit;font-size:.85rem;outline:none;background:#fff;width:100%}
+.qm-filters select:focus{border-color:var(--saffron)}
+textarea.form-control{resize:vertical;min-height:120px;font-family:inherit;width:100%;padding:11px 13px;border:1.5px solid #e0e4f0;border-radius:9px;font-size:.88rem;outline:none;transition:var(--t)}
+textarea.form-control:focus{border-color:var(--saffron)}
+.q-item{background:#f7f8fc;border:1px solid #e8eaf5;border-radius:10px;padding:14px;margin-bottom:12px}
+.q-item-tx{font-weight:700;font-size:.9rem;margin-bottom:8px;color:var(--deep-navy)}
+.q-item-meta{display:flex;gap:8px;flex-wrap:wrap;font-size:.75rem;color:var(--muted);margin-bottom:8px}
+.q-badge{background:#e0e4f0;padding:3px 8px;border-radius:6px;font-weight:600}
+.q-badge.pyq{background:#e8f5e9;color:#2e7d32}
+.q-badge.hard{background:#ffebee;color:#c62828}
+.q-opts{display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:.8rem;margin-bottom:10px}
+.q-opt{background:#fff;border:1px solid #e0e4f0;padding:6px 10px;border-radius:6px}
+.q-opt.correct{border-color:var(--green);background:#f1fbf4;font-weight:600}
 </style>
 </head>
 <body>
@@ -341,16 +360,20 @@ function renderHome() {
         <div class="ic">📚</div>
         <div class="nm">सिलेबस</div>
         <div class="lb">Subject/Topic Manage</div>
+      </div>
+      <div class="dcard" onclick="goQuestionManager()">
+        <div class="ic">📝</div>
+        <div class="nm">प्रश्न बैंक</div>
+        <div class="lb">Add/Edit Questions</div>
       </div>` : ''}
       <div class="dcard" style="opacity:.5;cursor:default">
-        <div class="ic">📝</div>
+        <div class="ic">🎯</div>
         <div class="nm">क्विज़</div>
         <div class="lb">आगे की session में</div>
       </div>
     </div>
   </div>`;
 }
-
 // ══════════════════════════════════════════════
 // SECTION: SYLLABUS MANAGER (Admin only)
 // — Subject → Topic → Micro-topic, tree-structure
@@ -598,6 +621,222 @@ async function doDelete() {
   if (pendingDelete.type === 'subject') loadSubjects();
   else if (pendingDelete.type === 'topic') loadTopics(smSubject);
   else loadMicroTopics(smTopic);
+}
+
+  // ══════════════════════════════════════════════
+// SECTION: QUESTION MANAGER (Admin only)
+// ══════════════════════════════════════════════
+let qmTab = 'single'; // 'single', 'bulk', 'list', 'flagged'
+let qmFilters = { sub: '', top: '', mic: '' };
+let qmDropdownData = { subs: [], tops: [], mics: [] };
+
+async function goQuestionManager() {
+  renderSyllabusShell('डेटा लोड हो रहा है...');
+  const { data } = await sb.from('subjects').select('id, name').order('sort_order');
+  qmDropdownData.subs = data || [];
+  qmFilters = { sub: '', top: '', mic: '' };
+  renderQM();
+}
+
+async function fetchQMTopics(subId) {
+  qmFilters.sub = subId; qmFilters.top = ''; qmFilters.mic = '';
+  qmDropdownData.tops = []; qmDropdownData.mics = [];
+  if(subId) {
+    const { data } = await sb.from('topics').select('id, name').eq('subject_id', subId).order('sort_order');
+    qmDropdownData.tops = data || [];
+  }
+  renderQM();
+}
+
+async function fetchQMMicro(topId) {
+  qmFilters.top = topId; qmFilters.mic = '';
+  qmDropdownData.mics = [];
+  if(topId) {
+    const { data } = await sb.from('micro_topics').select('id, name').eq('topic_id', topId).order('sort_order');
+    qmDropdownData.mics = data || [];
+  }
+  renderQM();
+}
+
+function setQMFilterMic(micId) {
+  qmFilters.mic = micId;
+  renderQM();
+}
+
+function setQMTab(tab) {
+  qmTab = tab;
+  renderQM();
+}
+
+function renderQM() {
+  const root = document.getElementById('appRoot');
+  
+  // Dropdowns HTML
+  const selSub = `<select onchange="fetchQMTopics(this.value)">
+    <option value="">-- विषय (Subject) --</option>
+    ${qmDropdownData.subs.map(s => `<option value="${s.id}" ${qmFilters.sub===s.id?'selected':''}>${s.name}</option>`).join('')}
+  </select>`;
+  const selTop = `<select onchange="fetchQMMicro(this.value)" ${!qmFilters.sub?'disabled':''}>
+    <option value="">-- टॉपिक (Topic) --</option>
+    ${qmDropdownData.tops.map(t => `<option value="${t.id}" ${qmFilters.top===t.id?'selected':''}>${t.name}</option>`).join('')}
+  </select>`;
+  const selMic = `<select onchange="setQMFilterMic(this.value)" ${!qmFilters.top?'disabled':''}>
+    <option value="">-- माइक्रो-टॉपिक --</option>
+    ${qmDropdownData.mics.map(m => `<option value="${m.id}" ${qmFilters.mic===m.id?'selected':''}>${m.name}</option>`).join('')}
+  </select>`;
+
+  let contentHtml = '';
+  if(!qmFilters.mic && qmTab !== 'flagged') {
+    contentHtml = `<div class="empty-state"><div class="em-ic">👆</div>आगे बढ़ने के लिए ऊपर से Subject, Topic और Micro-topic चुनें।</div>`;
+  } else {
+    if(qmTab === 'single') contentHtml = renderQMSingleForm();
+    else if(qmTab === 'bulk') contentHtml = renderQMBulkForm();
+    else if(qmTab === 'list') { contentHtml = `<div id="qmListWrap"><p class="empty-state">लोड हो रहा है...</p></div>`; setTimeout(loadQMList, 50); }
+    else if(qmTab === 'flagged') { contentHtml = `<div id="qmFlaggedWrap"><p class="empty-state">लोड हो रहा है...</p></div>`; setTimeout(loadQMFlagged, 50); }
+  }
+
+  root.innerHTML = `
+  <div class="card" style="max-width:800px; margin:0 auto;">
+    <div class="crumb"><span onclick="renderHome()">🏠 होम</span> › <span class="cur">प्रश्न बैंक (Question Manager)</span></div>
+    
+    <div class="tabs">
+      <div class="tab ${qmTab==='single'?'active':''}" onclick="setQMTab('single')">✏️ एक प्रश्न जोड़ें</div>
+      <div class="tab ${qmTab==='bulk'?'active':''}" onclick="setQMTab('bulk')">📦 Bulk JSON</div>
+      <div class="tab ${qmTab==='list'?'active':''}" onclick="setQMTab('list')">📋 प्रश्न लिस्ट</div>
+      <div class="tab ${qmTab==='flagged'?'active':''}" onclick="setQMTab('flagged')">🚩 रिपोर्ट्स (Flagged)</div>
+    </div>
+
+    ${qmTab !== 'flagged' ? `<div class="qm-filters">${selSub}${selTop}${selMic}</div>` : ''}
+    
+    <div style="border-top:1px solid #e0e4f0; margin:15px 0; padding-top:15px;">
+      ${contentHtml}
+    </div>
+  </div>`;
+}
+
+function renderQMSingleForm() {
+  return `
+  <div class="field"><label>प्रश्न (Question)</label><textarea id="qText" class="form-control" placeholder="प्रश्न यहाँ लिखें..."></textarea></div>
+  <div class="qm-filters">
+    <div class="field"><label>Option A</label><input type="text" id="qOpA" placeholder="विकल्प A"></div>
+    <div class="field"><label>Option B</label><input type="text" id="qOpB" placeholder="विकल्प B"></div>
+    <div class="field"><label>Option C</label><input type="text" id="qOpC" placeholder="विकल्प C"></div>
+    <div class="field"><label>Option D</label><input type="text" id="qOpD" placeholder="विकल्प D"></div>
+  </div>
+  <div class="qm-filters" style="grid-template-columns:1fr 1fr 1fr">
+    <div class="field"><label>सही उत्तर</label>
+      <select id="qAns">
+        <option value="a">Option A</option><option value="b">Option B</option><option value="c">Option C</option><option value="d">Option D</option>
+      </select>
+    </div>
+    <div class="field"><label>कठिनाई (Difficulty)</label>
+      <select id="qDiff"><option value="easy">Easy</option><option value="medium" selected>Medium</option><option value="hard">Hard</option></select>
+    </div>
+    <div class="field"><label style="display:flex;align-items:center;gap:5px;height:100%;cursor:pointer">
+      <input type="checkbox" id="qPyq" style="width:16px;height:16px"> यह PYQ (पिछले वर्ष का प्रश्न) है
+    </label></div>
+  </div>
+  <div class="field"><label>व्याख्या (Explanation) - Optional</label><textarea id="qExp" class="form-control" style="min-height:60px" placeholder="उत्तर की व्याख्या..."></textarea></div>
+  <div class="field"><label>Source / Exam Name - Optional</label><input type="text" id="qSrc" placeholder="e.g. RAS Pre 2023"></div>
+  <button class="btn btn-primary" onclick="saveSingleQ()">प्रश्न Save करें</button>`;
+}
+
+async function saveSingleQ() {
+  const q = {
+    micro_topic_id: qmFilters.mic,
+    question: document.getElementById('qText').value.trim(),
+    option_a: document.getElementById('qOpA').value.trim(),
+    option_b: document.getElementById('qOpB').value.trim(),
+    option_c: document.getElementById('qOpC').value.trim(),
+    option_d: document.getElementById('qOpD').value.trim(),
+    correct_option: document.getElementById('qAns').value,
+    difficulty: document.getElementById('qDiff').value,
+    is_pyq: document.getElementById('qPyq').checked,
+    explanation: document.getElementById('qExp').value.trim(),
+    source: document.getElementById('qSrc').value.trim()
+  };
+  if(!q.question || !q.option_a || !q.option_b || !q.option_c || !q.option_d) { showToast('प्रश्न और सभी 4 विकल्प भरना अनिवार्य है', 'err'); return; }
+  
+  showToast('सेव हो रहा है...', 'ok');
+  const { error } = await sb.from('questions').insert(q);
+  if(error) { showToast(error.message, 'err'); return; }
+  showToast('प्रश्न सफलतापूर्वक जुड़ गया ✅', 'ok');
+  setQMTab('single'); // refresh form
+}
+
+function renderQMBulkForm() {
+  return `
+  <div class="field"><label>JSON पेस्ट करें (Format: Array of Objects)</label>
+  <textarea id="qBulkJson" class="form-control" style="min-height:200px;font-family:monospace" placeholder='[\n  {\n    "question": "सिंधु घाटी...",\n    "option_a": "...",\n    "option_b": "...",\n    "option_c": "...",\n    "option_d": "...",\n    "correct_option": "b",\n    "explanation": "...",\n    "difficulty": "medium",\n    "is_pyq": true,\n    "source": "RAS 2018"\n  }\n]'></textarea></div>
+  <button class="btn btn-primary" onclick="saveBulkQ()">Bulk Upload करें</button>`;
+}
+
+async function saveBulkQ() {
+  try {
+    const raw = document.getElementById('qBulkJson').value;
+    const arr = JSON.parse(raw);
+    if(!Array.isArray(arr)) throw new Error('JSON Array Format में होना चाहिए []');
+    
+    const payload = arr.map(q => ({
+      micro_topic_id: qmFilters.mic,
+      question: q.question, option_a: q.option_a, option_b: q.option_b, option_c: q.option_c, option_d: q.option_d,
+      correct_option: q.correct_option.toLowerCase(), explanation: q.explanation || '', source: q.source || '',
+      difficulty: q.difficulty || 'medium', is_pyq: q.is_pyq || false
+    }));
+    
+    showToast(`Uploading ${payload.length} questions...`, 'ok');
+    const { error } = await sb.from('questions').insert(payload);
+    if(error) throw error;
+    showToast(`${payload.length} प्रश्न जुड़ गए ✅`, 'ok');
+    document.getElementById('qBulkJson').value = '';
+  } catch(e) {
+    showToast('Error: ' + e.message, 'err');
+  }
+}
+
+async function loadQMList() {
+  const wrap = document.getElementById('qmListWrap');
+  const { data, error } = await sb.from('questions').select('id, question, option_a, option_b, option_c, option_d, correct_option, difficulty, is_pyq').eq('micro_topic_id', qmFilters.mic).order('created_at', {ascending: false});
+  if(error) { wrap.innerHTML = `<p class="empty-state">त्रुटि: ${error.message}</p>`; return; }
+  if(!data || data.length === 0) { wrap.innerHTML = `<div class="empty-state"><div class="em-ic">📭</div>कोई प्रश्न नहीं मिला।</div>`; return; }
+  
+  wrap.innerHTML = `<div style="font-size:.8rem;color:var(--muted);margin-bottom:10px">कुल प्रश्न: ${data.length}</div>` + data.map((q, i) => `
+  <div class="q-item" id="qitem-${q.id}">
+    <div class="q-item-meta">
+      <span class="q-badge">Q ${i+1}</span>
+      <span class="q-badge ${q.difficulty==='hard'?'hard':''}">${q.difficulty.toUpperCase()}</span>
+      ${q.is_pyq ? '<span class="q-badge pyq">PYQ</span>' : ''}
+    </div>
+    <div class="q-item-tx">${q.question}</div>
+    <div class="q-opts">
+      <div class="q-opt ${q.correct_option==='a'?'correct':''}">(A) ${q.option_a}</div>
+      <div class="q-opt ${q.correct_option==='b'?'correct':''}">(B) ${q.option_b}</div>
+      <div class="q-opt ${q.correct_option==='c'?'correct':''}">(C) ${q.option_c}</div>
+      <div class="q-opt ${q.correct_option==='d'?'correct':''}">(D) ${q.option_d}</div>
+    </div>
+    <button class="btn btn-danger" style="padding:6px 12px;font-size:.75rem;width:auto;margin-top:5px" onclick="deleteSingleQ('${q.id}')">🗑️ डिलीट करें</button>
+  </div>`).join('');
+}
+
+async function deleteSingleQ(id) {
+  if(!confirm('क्या आप सच में यह प्रश्न डिलीट करना चाहते हैं?')) return;
+  const { error } = await sb.from('questions').delete().eq('id', id);
+  if(error) showToast(error.message, 'err');
+  else { showToast('डिलीट हो गया', 'ok'); document.getElementById('qitem-'+id).remove(); }
+}
+
+async function loadQMFlagged() {
+  const wrap = document.getElementById('qmFlaggedWrap');
+  const { data, error } = await sb.from('flagged_questions').select('id, reason, status, created_at, questions(question)').order('created_at', {ascending: false});
+  if(error) { wrap.innerHTML = `<p class="empty-state">त्रुटि: ${error.message}</p>`; return; }
+  if(!data || data.length === 0) { wrap.innerHTML = `<div class="empty-state"><div class="em-ic">✅</div>कोई रिपोर्टेड प्रश्न नहीं है।</div>`; return; }
+  
+  wrap.innerHTML = data.map(f => `
+  <div class="q-item">
+    <div class="q-item-tx" style="font-size:.85rem;color:var(--muted)">प्रश्न: ${f.questions?.question || 'Deleted'}</div>
+    <div style="color:var(--red);font-weight:600;font-size:.85rem;margin-bottom:5px">🚩 रिपोर्ट: ${f.reason}</div>
+    <div class="q-item-meta">Status: <span class="q-badge">${f.status}</span></div>
+  </div>`).join('');
 }
 
 // ══════════════════════════════════════════════
