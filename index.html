@@ -947,7 +947,7 @@ async function updateDailyTarget(questionsAttempted) {
   const today=new Date().toISOString().split('T')[0];
   const {data:existing}=await sb.from('daily_goals').select('*').eq('user_id',currentUser.id).eq('date',today).maybeSingle();
   if(existing){
-    await sb.from('daily_goals').update({achieved_count:existing.achieved_count+questionsAttempted}).eq('id',existing.id);
+    await sb.from('daily_goals').update({achieved_count:existing.achieved_count+questionsAttempted}).eq('user_id',currentUser.id).eq('date',today);
   } else {
     await sb.from('daily_goals').insert({user_id:currentUser.id,date:today,goal_count:10,achieved_count:questionsAttempted});
   }
@@ -1267,9 +1267,9 @@ async function saveGoalTarget() {
   const today=new Date().toISOString().split('T')[0];
   const newGoal=parseInt(document.getElementById('goalInput').value,10);
   if(!newGoal||newGoal<1){showToast('वैध लक्ष्य दर्ज करें','err');return;}
-  const {data:existing}=await sb.from('daily_goals').select('id,achieved_count').eq('user_id',currentUser.id).eq('date',today).maybeSingle();
+  const {data:existing}=await sb.from('daily_goals').select('achieved_count').eq('user_id',currentUser.id).eq('date',today).maybeSingle();
   if(existing){
-    await sb.from('daily_goals').update({goal_count:newGoal}).eq('id',existing.id);
+    await sb.from('daily_goals').update({goal_count:newGoal}).eq('user_id',currentUser.id).eq('date',today);
   } else {
     await sb.from('daily_goals').insert({user_id:currentUser.id,date:today,goal_count:newGoal,achieved_count:0});
   }
