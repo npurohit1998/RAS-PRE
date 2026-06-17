@@ -365,10 +365,10 @@ function renderHome() {
         <div class="nm">प्रश्न बैंक</div>
         <div class="lb">Add/Edit Questions</div>
       </div>` : ''}
-      <div class="dcard" style="opacity:.5;cursor:default">
+      <div class="dcard" onclick="goQuizSetup()">
         <div class="ic">🎯</div>
         <div class="nm">क्विज़</div>
-        <div class="lb">आगे की session में</div>
+        <div class="lb">अभ्यास शुरू करें</div>
       </div>
     </div>
   </div>`;
@@ -857,6 +857,438 @@ async function loadQMFlagged() {
     <div style="color:var(--red);font-weight:600;font-size:.85rem;margin-bottom:5px">🚩 रिपोर्ट: ${f.reason}</div>
     <div class="q-item-meta">Status: <span class="q-badge">${f.status}</span></div>
   </div>`).join('');
+}
+
+// ══════════════════════════════════════════════
+// SECTION: QUIZ SETUP (Subject/Topic/Micro-topic → Mode → Count → Timer)
+// ══════════════════════════════════════════════
+let qzSetup = {
+  level: 'subject',      // 'subject' | 'topic' | 'microtopic'
+  subId: '', topId: '', micId: '',
+  mode: 'practice',      // 'practice' | 'exam' | 'revision'
+  count: 10,
+  timerMin: 20
+};
+let qzDropdown = { subs: [], tops: [], mics: [] };
+
+async function goQuizSetup() {
+  renderSyllabusShell('लोड हो रहा है...');
+  const { data } = await sb.from('subjects').select('id, name').order('sort_order');
+  qzDropdown.subs = data || [];
+  qzDropdown.tops = []; qzDropdown.mics = [];
+  qzSetup = { level: 'subject', subId: '', topId: '', micId: '', mode: 'practice', count: 10, timerMin: 20 };
+  renderQuizSetup();
+}
+
+function setQzLevel(level) {
+  qzSetup.level = level;
+  if (level === 'subject') { qzSetup.topId = ''; qzSetup.micId = ''; }
+  if (level === 'topic') { qzSetup.micId = ''; }
+  renderQuizSetup();
+}
+
+async function qzPickSubject(subId) {
+  qzSetup.subId = subId; qzSetup.topId = ''; qzSetup.micId = '';
+  qzDropdown.tops = []; qzDropdown.mics = [];
+  if (subId && qzSetup.level !== 'subject') {
+    const { data } = await sb.from('topics').select('id, name').eq('subject_id', subId).order('sort_order');
+    qzDropdown.tops = data || [];
+  }
+  renderQuizSetup();
+}
+
+async function qzPickTopic(topId) {
+  qzSetup.topId = topId; qzSetup.micId = '';
+  qzDropdown.mics = [];
+  if (topId && qzSetup.level === 'microtopic') {
+    const { data } = await sb.from('micro_topics').select('id, name').eq('topic_id', topId).order('sort_order');
+    qzDropdown.mics = data || [];
+  }
+  renderQuizSetup();
+}
+
+function qzPickMicro(micId) {
+  qzSetup.micId = micId;
+  renderQuizSetup();
+}
+
+function setQzMode(mode) {
+  qzSetup.mode = mode;
+  renderQuizSetup();
+}
+
+function renderQuizSetup() {
+  const root = document.getElementById('appRoot');
+
+  const levelTabs = `
+  <div class="tabs">
+    <div class="tab ${qzSetup.level==='subject'?'active':''}" onclick="setQzLevel('subject')">📖 विषय (Subject)</div>
+    <div class="tab ${qzSetup.level==='topic'?'active':''}" onclick="setQzLevel('topic')">📑 टॉपिक (Topic)</div>
+    <div class="tab ${qzSetup.level==='microtopic'?'active':''}" onclick="setQzLevel('microtopic')">📄 माइक्रो-टॉपिक</div>
+  </div>`;
+
+  const selSub = `<div class="field"><label>विषय चुनें</label>
+    <select onchange="qzPickSubject(this.value)">
+      <option value="">-- विषय चुनें --</option>
+      ${qzDropdown.subs.map(s => `<option value="${s.id}" ${qzSetup.subId===s.id?'selected':''}>${s.name}</option>`).join('')}
+    </select></div>`;
+
+  const selTop = qzSetup.level !== 'subject' ? `<div class="field"><label>टॉपिक चुनें</label>
+    <select onchange="qzPickTopic(this.value)" ${!qzSetup.subId?'disabled':''}>
+      <option value="">-- टॉपिक चुनें --</option>
+      ${qzDropdown.tops.map(t => `<option value="${t.id}" ${qzSetup.topId===t.id?'selected':''}>${t.name}</option>`).join('')}
+    </select></div>` : '';
+
+  const selMic = qzSetup.level === 'microtopic' ? `<div class="field"><label>माइक्रो-टॉपिक चुनें</label>
+    <select onchange="qzPickMicro(this.value)" ${!qzSetup.topId?'disabled':''}>
+      <option value="">-- माइक्रो-टॉपिक चुनें --</option>
+      ${qzDropdown.mics.map(m => `<option value="${m.id}" ${qzSetup.micId===m.id?'selected':''}>${m.name}</option>`).join('')}
+    </select></div>` : '';
+
+  const readyToStart =
+    (qzSetup.level === 'subject' && qzSetup.subId) ||
+    (qzSetup.level === 'topic' && qzSetup.topId) ||
+    (qzSetup.level === 'microtopic' && qzSetup.micId);
+
+  const modeBlock = `
+  <div class="field"><label>मोड चुनें</label>
+  <div class="tabs">
+    <div class="tab ${qzSetup.mode==='practice'?'active':''}" onclick="setQzMode('practice')">✍️ Practice</div>
+    <div class="tab ${qzSetup.mode==='exam'?'active':''}" onclick="setQzMode('exam')">⏱️ Exam</div>
+    <div class="tab ${qzSetup.mode==='revision'?'active':''}" onclick="setQzMode('revision')">🔁 Revision</div>
+  </div>
+  <div style="font-size:.78rem;color:var(--muted);margin-top:-6px;margin-bottom:10px">
+    ${qzSetup.mode==='practice' ? 'हर सवाल के बाद तुरंत सही/गलत पता चलेगा।' : ''}
+    ${qzSetup.mode==='exam' ? 'टाइमर चलेगा, अंत में पूरा result दिखेगा।' : ''}
+    ${qzSetup.mode==='revision' ? 'सामान्य अभ्यास जैसा (पूरा spaced-repetition logic आगे की session में आएगा)।' : ''}
+  </div></div>`;
+
+  const countBlock = `<div class="field"><label>कितने सवाल चाहिए?</label>
+  <select id="qzCount">
+    ${[5,10,15,20,25,30,50].map(n => `<option value="${n}" ${qzSetup.count===n?'selected':''}>${n} सवाल</option>`).join('')}
+  </select></div>`;
+
+  const timerBlock = qzSetup.mode === 'exam' ? `<div class="field"><label>समय सीमा (Timer)</label>
+  <select id="qzTimer">
+    <option value="10">10 मिनट</option>
+    <option value="20" selected>20 मिनट</option>
+    <option value="30">30 मिनट</option>
+    <option value="45">45 मिनट</option>
+    <option value="60">60 मिनट</option>
+    <option value="0">कोई समय-सीमा नहीं</option>
+  </select></div>` : '';
+
+  root.innerHTML = `
+  <div class="card" style="max-width:600px;margin:0 auto">
+    <div class="crumb"><span onclick="renderHome()">🏠 होम</span> › <span class="cur">क्विज़ शुरू करें</span></div>
+    <div class="ctitle">🎯 क्विज़ सेटअप</div>
+    ${levelTabs}
+    ${selSub}
+    ${selTop}
+    ${selMic}
+    ${readyToStart ? modeBlock + countBlock + timerBlock : `<div class="empty-state"><div class="em-ic">👆</div>ऊपर से चुनकर आगे बढ़ें।</div>`}
+    ${readyToStart ? `<button class="btn btn-primary" onclick="startQuiz()">क्विज़ शुरू करें ▶️</button>` : ''}
+  </div>`;
+}
+
+// ══════════════════════════════════════════════
+// SECTION: QUIZ ENGINE (in-progress quiz state + rendering)
+// ══════════════════════════════════════════════
+let qzState = null; // built fresh each time startQuiz() runs
+
+function fisherYatesShuffle(arr) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+async function startQuiz() {
+  const countSel = document.getElementById('qzCount');
+  const timerSel = document.getElementById('qzTimer');
+  qzSetup.count = countSel ? parseInt(countSel.value, 10) : 10;
+  qzSetup.timerMin = timerSel ? parseInt(timerSel.value, 10) : 0;
+
+  renderSyllabusShell('सवाल लाए जा रहे हैं...');
+
+  // Build question query based on chosen level — joins through micro_topics→topics so
+  // subject/topic level filters work without needing a denormalized subject_id on questions.
+  let micIds = [];
+  if (qzSetup.level === 'microtopic') {
+    micIds = [qzSetup.micId];
+  } else if (qzSetup.level === 'topic') {
+    const { data, error } = await sb.from('micro_topics').select('id').eq('topic_id', qzSetup.topId);
+    if (error) { showToast('सवाल लाने में दिक्कत: ' + error.message, 'err'); goQuizSetup(); return; }
+    micIds = (data || []).map(m => m.id);
+  } else {
+    const { data: tops, error: topErr } = await sb.from('topics').select('id').eq('subject_id', qzSetup.subId);
+    if (topErr) { showToast('सवाल लाने में दिक्कत: ' + topErr.message, 'err'); goQuizSetup(); return; }
+    const topIds = (tops || []).map(t => t.id);
+    if (topIds.length) {
+      const { data: mics, error: micErr } = await sb.from('micro_topics').select('id').in('topic_id', topIds);
+      if (micErr) { showToast('सवाल लाने में दिक्कत: ' + micErr.message, 'err'); goQuizSetup(); return; }
+      micIds = (mics || []).map(m => m.id);
+    }
+  }
+
+  if (!micIds.length) {
+    showToast('इस चुनाव में कोई Micro-topic नहीं मिला, इसलिए सवाल नहीं हैं', 'err');
+    goQuizSetup();
+    return;
+  }
+
+  const { data: qData, error: qErr } = await sb.from('questions').select('*').in('micro_topic_id', micIds);
+  if (qErr) { showToast('सवाल लाने में दिक्कत: ' + qErr.message, 'err'); goQuizSetup(); return; }
+
+  if (!qData || qData.length === 0) {
+    showToast('इस चुनाव में अभी कोई सवाल उपलब्ध नहीं है', 'err');
+    goQuizSetup();
+    return;
+  }
+
+  const shuffled = fisherYatesShuffle(qData);
+  const picked = shuffled.slice(0, qzSetup.count);
+  if (picked.length < qzSetup.count) {
+    showToast(`सिर्फ ${picked.length} सवाल उपलब्ध थे, उतने ही दिए जा रहे हैं`, 'ok');
+  }
+
+  qzState = {
+    questions: picked,
+    idx: 0,
+    answers: new Array(picked.length).fill(null), // {selected, correct, isCorrect} or null=skipped
+    mode: qzSetup.mode,
+    level: qzSetup.level,
+    subId: qzSetup.subId, topId: qzSetup.topId, micId: qzSetup.micId,
+    startedAt: Date.now(),
+    timerMin: qzSetup.timerMin,
+    timerInterval: null,
+    secondsLeft: qzSetup.timerMin > 0 ? qzSetup.timerMin * 60 : null,
+    locked: false // true after answering current question in practice mode, until "next"
+  };
+
+  if (qzState.mode === 'exam' && qzState.secondsLeft !== null) {
+    qzState.timerInterval = setInterval(qzTimerTick, 1000);
+  }
+
+  renderQuizQuestion();
+}
+
+function qzTimerTick() {
+  if (!qzState) return;
+  qzState.secondsLeft--;
+  const el = document.getElementById('qzTimerDisplay');
+  if (el) el.textContent = qzFormatTime(qzState.secondsLeft);
+  if (qzState.secondsLeft <= 0) {
+    clearInterval(qzState.timerInterval);
+    showToast('समय समाप्त! क्विज़ जमा की जा रही है...', 'err');
+    finishQuiz();
+  }
+}
+
+function qzFormatTime(totalSeconds) {
+  const m = Math.floor(totalSeconds / 60);
+  const s = totalSeconds % 60;
+  return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
+
+function renderQuizQuestion() {
+  const root = document.getElementById('appRoot');
+  const st = qzState;
+  const q = st.questions[st.idx];
+  const answered = st.answers[st.idx];
+  const isPractice = st.mode === 'practice' || st.mode === 'revision';
+
+  const opts = ['a','b','c','d'];
+  const optsHtml = opts.map(letter => {
+    const text = q['option_' + letter];
+    let cls = 'q-opt';
+    let clickable = true;
+    if (answered) {
+      clickable = false;
+      if (letter === q.correct_option) cls += ' correct';
+      else if (letter === answered.selected) cls += ' wrong-pick';
+    }
+    return `<div class="${cls}" style="cursor:${clickable?'pointer':'default'};margin-bottom:8px;padding:12px;${answered && letter===answered.selected && letter!==q.correct_option ? 'border-color:var(--red);background:#fff3f3' : ''}" ${clickable ? `onclick="qzSelectOption('${letter}')"` : ''}>
+      <strong>(${letter.toUpperCase()})</strong> ${text}
+    </div>`;
+  }).join('');
+
+  const progressTxt = `सवाल ${st.idx + 1} / ${st.questions.length}`;
+  const timerHtml = (st.mode === 'exam' && st.secondsLeft !== null)
+    ? `<div style="font-weight:700;color:var(--red);font-size:.95rem" id="qzTimerDisplay">${qzFormatTime(st.secondsLeft)}</div>`
+    : (st.mode === 'exam' ? `<div style="font-size:.8rem;color:var(--muted)">कोई समय-सीमा नहीं</div>` : '');
+
+  const explanationHtml = (isPractice && answered && q.explanation) ? `
+    <div style="background:#f7f8fc;border:1px solid #e8eaf5;border-radius:10px;padding:12px;margin-top:10px;font-size:.83rem;color:var(--text)">
+      💡 <strong>व्याख्या:</strong> ${q.explanation}
+    </div>` : '';
+
+  const isLast = st.idx === st.questions.length - 1;
+  const nextLabel = isLast ? 'क्विज़ समाप्त करें ✅' : 'आगे ▶️';
+
+  let actionHtml = '';
+  if (isPractice) {
+    actionHtml = answered
+      ? `<button class="btn btn-primary" onclick="qzGoNext()">${nextLabel}</button>`
+      : `<button class="btn btn-secondary" onclick="qzSkip()">यह सवाल छोड़ें</button>`;
+  } else {
+    // exam mode: selecting an option auto-advances is not done — user can change answer freely until Next
+    actionHtml = `
+      <div style="display:flex;gap:10px">
+        <button class="btn btn-secondary" onclick="qzSkip()">छोड़ें</button>
+        <button class="btn btn-primary" onclick="qzGoNext()" ${!answered?'disabled':''}>${nextLabel}</button>
+      </div>`;
+  }
+
+  root.innerHTML = `
+  <div class="card" style="max-width:600px;margin:0 auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <div style="font-size:.8rem;color:var(--muted);font-weight:600">${progressTxt}</div>
+      ${timerHtml}
+    </div>
+    <div class="q-item-meta">
+      <span class="q-badge ${q.difficulty==='hard'?'hard':''}">${(q.difficulty||'medium').toUpperCase()}</span>
+      ${q.is_pyq ? '<span class="q-badge pyq">PYQ</span>' : ''}
+    </div>
+    <div class="q-item-tx" style="font-size:1rem;margin:10px 0 16px">${q.question}</div>
+    ${optsHtml}
+    ${explanationHtml}
+    <div style="margin-top:16px">${actionHtml}</div>
+  </div>`;
+}
+
+function qzSelectOption(letter) {
+  const st = qzState;
+  if (st.answers[st.idx]) return; // already answered, ignore further clicks
+  const q = st.questions[st.idx];
+  st.answers[st.idx] = { selected: letter, correct: q.correct_option, isCorrect: letter === q.correct_option, skipped: false };
+  renderQuizQuestion();
+}
+
+function qzSkip() {
+  const st = qzState;
+  if (!st.answers[st.idx]) {
+    st.answers[st.idx] = { selected: null, correct: st.questions[st.idx].correct_option, isCorrect: false, skipped: true };
+  }
+  qzGoNext();
+}
+
+function qzGoNext() {
+  const st = qzState;
+  if (st.idx < st.questions.length - 1) {
+    st.idx++;
+    renderQuizQuestion();
+  } else {
+    finishQuiz();
+  }
+}
+
+// ══════════════════════════════════════════════
+// SECTION: QUIZ RESULT (scoring, saving to sessions/session_answers, review)
+// ══════════════════════════════════════════════
+async function finishQuiz() {
+  const st = qzState;
+  if (st.timerInterval) clearInterval(st.timerInterval);
+
+  const timeTakenSec = Math.round((Date.now() - st.startedAt) / 1000);
+  let correct = 0, incorrect = 0, skipped = 0;
+  st.answers.forEach(a => {
+    if (!a || a.skipped) skipped++;
+    else if (a.isCorrect) correct++;
+    else incorrect++;
+  });
+
+  renderSyllabusShell('Result सेव हो रहा है...');
+
+  try {
+    const { data: sessionRow, error: sessErr } = await sb.from('sessions').insert({
+      user_id: currentUser.id,
+      mode: st.mode,
+      total: st.questions.length,
+      correct, incorrect, skipped,
+      time_taken: timeTakenSec
+    }).select().single();
+
+    if (sessErr) throw sessErr;
+
+    const answerRows = st.questions.map((q, i) => {
+      const a = st.answers[i] || { selected: null, isCorrect: false, skipped: true };
+      return {
+        session_id: sessionRow.id,
+        question_id: q.id,
+        selected_option: a.selected,
+        is_correct: a.isCorrect,
+        is_skipped: !!a.skipped
+      };
+    });
+
+    const { error: ansErr } = await sb.from('session_answers').insert(answerRows);
+    if (ansErr) throw ansErr;
+  } catch (e) {
+    showToast('Result सेव करने में दिक्कत: ' + e.message, 'err');
+    // Still show the result screen even if save failed — user shouldn't lose their attempt view.
+  }
+
+  renderQuizResult({ correct, incorrect, skipped, timeTakenSec, questions: st.questions, answers: st.answers });
+  qzState = null;
+}
+
+function renderQuizResult(r) {
+  const root = document.getElementById('appRoot');
+  const total = r.questions.length;
+  const pct = total ? Math.round((r.correct / total) * 100) : 0;
+  const mins = Math.floor(r.timeTakenSec / 60);
+  const secs = r.timeTakenSec % 60;
+
+  const wrongReview = r.questions.map((q, i) => ({ q, a: r.answers[i] }))
+    .filter(x => x.a && !x.a.isCorrect && !x.a.skipped)
+    .map(x => `
+      <div class="q-item">
+        <div class="q-item-tx">${x.q.question}</div>
+        <div class="q-opts">
+          ${['a','b','c','d'].map(letter => `
+            <div class="q-opt ${letter===x.q.correct_option?'correct':''}" style="${letter===x.a.selected && letter!==x.q.correct_option?'border-color:var(--red);background:#fff3f3':''}">
+              (${letter.toUpperCase()}) ${x.q['option_'+letter]}
+            </div>`).join('')}
+        </div>
+        ${x.q.explanation ? `<div style="font-size:.82rem;color:var(--text);margin-top:6px">💡 ${x.q.explanation}</div>` : ''}
+      </div>`).join('');
+
+  const skippedReview = r.questions.map((q, i) => ({ q, a: r.answers[i] }))
+    .filter(x => !x.a || x.a.skipped)
+    .map(x => `
+      <div class="q-item">
+        <div class="q-item-tx">${x.q.question}</div>
+        <div class="q-opts">
+          ${['a','b','c','d'].map(letter => `
+            <div class="q-opt ${letter===x.q.correct_option?'correct':''}">(${letter.toUpperCase()}) ${x.q['option_'+letter]}</div>`).join('')}
+        </div>
+        ${x.q.explanation ? `<div style="font-size:.82rem;color:var(--text);margin-top:6px">💡 ${x.q.explanation}</div>` : ''}
+      </div>`).join('');
+
+  root.innerHTML = `
+  <div class="card" style="max-width:600px;margin:0 auto;text-align:center">
+    <div class="ctitle" style="border-left:none;padding-left:0;justify-content:center">🏁 क्विज़ पूरी हुई!</div>
+    <div style="font-size:2.4rem;font-weight:800;color:var(--saffron);margin:6px 0">${pct}%</div>
+    <div style="font-size:.85rem;color:var(--muted);margin-bottom:18px">समय: ${mins} मिनट ${secs} सेकंड</div>
+    <div class="dgrid" style="grid-template-columns:repeat(4,1fr)">
+      <div class="dcard" style="cursor:default;background:linear-gradient(135deg,var(--navy),var(--light-navy))"><div class="nm">${total}</div><div class="lb">कुल</div></div>
+      <div class="dcard" style="cursor:default;background:linear-gradient(135deg,#1b5e20,#2e7d32)"><div class="nm">${r.correct}</div><div class="lb">सही</div></div>
+      <div class="dcard" style="cursor:default;background:linear-gradient(135deg,#b71c1c,#c62828)"><div class="nm">${r.incorrect}</div><div class="lb">गलत</div></div>
+      <div class="dcard" style="cursor:default;background:linear-gradient(135deg,#555,#777)"><div class="nm">${r.skipped}</div><div class="lb">छोड़े गए</div></div>
+    </div>
+  </div>
+
+  ${wrongReview ? `<div class="card"><div class="ctitle">❌ गलत सवालों की समीक्षा</div>${wrongReview}</div>` : ''}
+  ${skippedReview ? `<div class="card"><div class="ctitle">⏭️ छोड़े गए सवाल</div>${skippedReview}</div>` : ''}
+
+  <div class="card" style="max-width:600px;margin:0 auto">
+    <button class="btn btn-primary" onclick="goQuizSetup()">🔁 फिर से क्विज़ खेलें</button>
+    <div style="height:8px"></div>
+    <button class="btn btn-secondary" onclick="renderHome()">🏠 होम पर जाएं</button>
+  </div>`;
 }
 
 // ══════════════════════════════════════════════
