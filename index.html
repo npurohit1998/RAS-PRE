@@ -169,7 +169,6 @@ textarea.form-control:focus{border-color:var(--saffron)}
 // ══════════════════════════════════════════════
 // SECTION: SUPABASE INIT
 // ══════════════════════════════════════════════
-// नया Supabase project बनाने के बाद यहाँ डालें (Project Settings → API):
 const SB_URL = 'https://wfpqiymuxbiqdqzkahio.supabase.co';
 const SB_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndmcHFpeW11eGJpcWRxemthaGlvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1Nzg4MTYsImV4cCI6MjA5NzE1NDgxNn0.dIlG-XqxhKECO_LrCU2AmuPAxyO14w4c_UGWJQb2Sx0';
 const sb = supabase.createClient(SB_URL, SB_ANON_KEY);
@@ -395,12 +394,16 @@ async function loadSubjects() {
   const { data, error } = await sb.from('subjects').select('*').order('sort_order');
   if (error) { showToast('Subjects लोड नहीं हुए: ' + error.message, 'err'); return; }
   smCache.subjects = data || [];
-  // हर subject के अंदर topic count गिनने के लिए
   const { data: allTopics } = await sb.from('topics').select('id, subject_id');
   smCache._topicCounts = {};
   (allTopics || []).forEach(t => { smCache._topicCounts[t.subject_id] = (smCache._topicCounts[t.subject_id] || 0) + 1; });
   smLevel = 'subjects';
   renderSyllabusManager();
+}
+
+function loadTopicsById(subId) {
+  const subject = smCache.subjects.find(s => s.id === subId);
+  if (subject) loadTopics(subject);
 }
 
 async function loadTopics(subject) {
@@ -414,6 +417,11 @@ async function loadTopics(subject) {
   (allMicro || []).forEach(m => { smCache._microCounts[m.topic_id] = (smCache._microCounts[m.topic_id] || 0) + 1; });
   smLevel = 'topics';
   renderSyllabusManager();
+}
+
+function loadMicroTopicsById(topId) {
+  const topic = smCache.topics.find(t => t.id === topId);
+  if (topic) loadMicroTopics(topic);
 }
 
 async function loadMicroTopics(topic) {
@@ -475,7 +483,7 @@ function renderSyllabusManager() {
   if (smLevel === 'topics') {
     const rows = smCache.topics.length ? smCache.topics.map(t => `
       <div class="tree-item" id="row-${t.id}">
-        <div class="ti-name" onclick="loadMicroTopics(${JSON.stringify(t).replace(/"/g, '&quot;')})">📑 <span id="name-${t.id}">${t.name}</span>
+        <div class="ti-name" onclick="loadMicroTopicsById('${t.id}')">📑 <span id="name-${t.id}">${t.name}</span>
           <span class="ti-count">${smCache._microCounts[t.id] || 0} micro-topics</span>
         </div>
         <div class="tree-actions">
@@ -623,7 +631,7 @@ async function doDelete() {
   else loadMicroTopics(smTopic);
 }
 
-  // ══════════════════════════════════════════════
+// ══════════════════════════════════════════════
 // SECTION: QUESTION MANAGER (Admin only)
 // ══════════════════════════════════════════════
 let qmTab = 'single'; // 'single', 'bulk', 'list', 'flagged'
@@ -670,8 +678,7 @@ function setQMTab(tab) {
 
 function renderQM() {
   const root = document.getElementById('appRoot');
-  
-  // Dropdowns HTML
+
   const selSub = `<select onchange="fetchQMTopics(this.value)">
     <option value="">-- विषय (Subject) --</option>
     ${qmDropdownData.subs.map(s => `<option value="${s.id}" ${qmFilters.sub===s.id?'selected':''}>${s.name}</option>`).join('')}
@@ -698,7 +705,7 @@ function renderQM() {
   root.innerHTML = `
   <div class="card" style="max-width:800px; margin:0 auto;">
     <div class="crumb"><span onclick="renderHome()">🏠 होम</span> › <span class="cur">प्रश्न बैंक (Question Manager)</span></div>
-    
+
     <div class="tabs">
       <div class="tab ${qmTab==='single'?'active':''}" onclick="setQMTab('single')">✏️ एक प्रश्न जोड़ें</div>
       <div class="tab ${qmTab==='bulk'?'active':''}" onclick="setQMTab('bulk')">📦 Bulk JSON</div>
@@ -707,7 +714,7 @@ function renderQM() {
     </div>
 
     ${qmTab !== 'flagged' ? `<div class="qm-filters">${selSub}${selTop}${selMic}</div>` : ''}
-    
+
     <div style="border-top:1px solid #e0e4f0; margin:15px 0; padding-top:15px;">
       ${contentHtml}
     </div>
@@ -756,18 +763,31 @@ async function saveSingleQ() {
     source: document.getElementById('qSrc').value.trim()
   };
   if(!q.question || !q.option_a || !q.option_b || !q.option_c || !q.option_d) { showToast('प्रश्न और सभी 4 विकल्प भरना अनिवार्य है', 'err'); return; }
-  
+
   showToast('सेव हो रहा है...', 'ok');
   const { error } = await sb.from('questions').insert(q);
   if(error) { showToast(error.message, 'err'); return; }
   showToast('प्रश्न सफलतापूर्वक जुड़ गया ✅', 'ok');
-  setQMTab('single'); // refresh form
+  setQMTab('single');
 }
 
 function renderQMBulkForm() {
   return `
   <div class="field"><label>JSON पेस्ट करें (Format: Array of Objects)</label>
-  <textarea id="qBulkJson" class="form-control" style="min-height:200px;font-family:monospace" placeholder='[\n  {\n    "question": "सिंधु घाटी...",\n    "option_a": "...",\n    "option_b": "...",\n    "option_c": "...",\n    "option_d": "...",\n    "correct_option": "b",\n    "explanation": "...",\n    "difficulty": "medium",\n    "is_pyq": true,\n    "source": "RAS 2018"\n  }\n]'></textarea></div>
+  <textarea id="qBulkJson" class="form-control" style="min-height:200px;font-family:monospace" placeholder='[
+  {
+    "question": "सिंधु घाटी...",
+    "option_a": "...",
+    "option_b": "...",
+    "option_c": "...",
+    "option_d": "...",
+    "correct_option": "b",
+    "explanation": "...",
+    "difficulty": "medium",
+    "is_pyq": true,
+    "source": "RAS 2018"
+  }
+]'></textarea></div>
   <button class="btn btn-primary" onclick="saveBulkQ()">Bulk Upload करें</button>`;
 }
 
@@ -776,14 +796,14 @@ async function saveBulkQ() {
     const raw = document.getElementById('qBulkJson').value;
     const arr = JSON.parse(raw);
     if(!Array.isArray(arr)) throw new Error('JSON Array Format में होना चाहिए []');
-    
+
     const payload = arr.map(q => ({
       micro_topic_id: qmFilters.mic,
       question: q.question, option_a: q.option_a, option_b: q.option_b, option_c: q.option_c, option_d: q.option_d,
       correct_option: q.correct_option.toLowerCase(), explanation: q.explanation || '', source: q.source || '',
       difficulty: q.difficulty || 'medium', is_pyq: q.is_pyq || false
     }));
-    
+
     showToast(`Uploading ${payload.length} questions...`, 'ok');
     const { error } = await sb.from('questions').insert(payload);
     if(error) throw error;
@@ -799,7 +819,7 @@ async function loadQMList() {
   const { data, error } = await sb.from('questions').select('id, question, option_a, option_b, option_c, option_d, correct_option, difficulty, is_pyq').eq('micro_topic_id', qmFilters.mic).order('created_at', {ascending: false});
   if(error) { wrap.innerHTML = `<p class="empty-state">त्रुटि: ${error.message}</p>`; return; }
   if(!data || data.length === 0) { wrap.innerHTML = `<div class="empty-state"><div class="em-ic">📭</div>कोई प्रश्न नहीं मिला।</div>`; return; }
-  
+
   wrap.innerHTML = `<div style="font-size:.8rem;color:var(--muted);margin-bottom:10px">कुल प्रश्न: ${data.length}</div>` + data.map((q, i) => `
   <div class="q-item" id="qitem-${q.id}">
     <div class="q-item-meta">
@@ -830,7 +850,7 @@ async function loadQMFlagged() {
   const { data, error } = await sb.from('flagged_questions').select('id, reason, status, created_at, questions(question)').order('created_at', {ascending: false});
   if(error) { wrap.innerHTML = `<p class="empty-state">त्रुटि: ${error.message}</p>`; return; }
   if(!data || data.length === 0) { wrap.innerHTML = `<div class="empty-state"><div class="em-ic">✅</div>कोई रिपोर्टेड प्रश्न नहीं है।</div>`; return; }
-  
+
   wrap.innerHTML = data.map(f => `
   <div class="q-item">
     <div class="q-item-tx" style="font-size:.85rem;color:var(--muted)">प्रश्न: ${f.questions?.question || 'Deleted'}</div>
