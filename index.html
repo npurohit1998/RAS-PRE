@@ -1279,6 +1279,15 @@ async function saveGoalTarget() {
 // SECTION: INIT
 // ══════════════════════════════════════════════
 initAuth();
+
+  // ══════════════════════════════════════════════
+// SECTION: SERVICE WORKER REGISTRATION (Session 6)
+// ══════════════════════════════════════════════
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(err => console.log('SW register failed:', err));
+  });
+}
 </script>
 </body>
 </html>
