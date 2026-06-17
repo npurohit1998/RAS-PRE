@@ -50,8 +50,8 @@ body{font-family:'Noto Sans Devanagari',sans-serif;background:linear-gradient(13
 .auth-sub{text-align:center;font-size:.78rem;color:var(--muted);margin-bottom:22px}
 .field{margin-bottom:14px}
 .field label{display:block;font-size:.78rem;font-weight:600;color:var(--text);margin-bottom:5px}
-.field input{width:100%;padding:11px 13px;border:1.5px solid #e0e4f0;border-radius:9px;font-family:inherit;font-size:.88rem;outline:none;transition:var(--t)}
-.field input:focus{border-color:var(--saffron)}
+.field input,.field select{width:100%;padding:11px 13px;border:1.5px solid #e0e4f0;border-radius:9px;font-family:inherit;font-size:.88rem;outline:none;transition:var(--t);background:#fff}
+.field input:focus,.field select:focus{border-color:var(--saffron)}
 .auth-divider{display:flex;align-items:center;gap:10px;margin:16px 0;color:var(--muted);font-size:.75rem}
 .auth-divider::before,.auth-divider::after{content:'';flex:1;height:1px;background:#e0e4f0}
 .auth-switch{text-align:center;margin-top:16px;font-size:.82rem;color:var(--muted)}
@@ -63,10 +63,6 @@ body{font-family:'Noto Sans Devanagari',sans-serif;background:linear-gradient(13
 .google-note{font-size:.7rem;color:var(--muted);text-align:center;margin-top:4px}
 .spinner{width:16px;height:16px;border:2.5px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
-
-/* ── HOME (placeholder) ── */
-.home-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;padding:20px;text-align:center}
-.home-wrap .card{max-width:420px}
 
 /* ── TOAST ── */
 .toast-box{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:999;display:flex;flex-direction:column;gap:8px;align-items:center}
@@ -121,7 +117,7 @@ body{font-family:'Noto Sans Devanagari',sans-serif;background:linear-gradient(13
 .btn-secondary{background:#f0f1f7;color:var(--text)}
 .btn-danger{background:var(--red);color:#fff}
 
-  /* ── QUESTION MANAGER (Tabs & Forms) ── */
+/* ── QUESTION MANAGER ── */
 .tabs{display:flex;gap:8px;margin-bottom:16px;overflow-x:auto;padding-bottom:4px}
 .tab{padding:8px 16px;background:#f0f1f7;border-radius:20px;font-size:.85rem;font-weight:600;color:var(--muted);cursor:pointer;white-space:nowrap;transition:var(--t)}
 .tab.active{background:linear-gradient(135deg,var(--saffron),var(--gold));color:#fff;box-shadow:0 4px 10px rgba(255,107,0,.3)}
@@ -139,6 +135,29 @@ textarea.form-control:focus{border-color:var(--saffron)}
 .q-opts{display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:.8rem;margin-bottom:10px}
 .q-opt{background:#fff;border:1px solid #e0e4f0;padding:6px 10px;border-radius:6px}
 .q-opt.correct{border-color:var(--green);background:#f1fbf4;font-weight:600}
+
+/* ── PROGRESS BARS ── */
+.prog-bar-wrap{background:#e8eaf5;border-radius:20px;height:10px;margin:5px 0 8px;overflow:hidden}
+.prog-bar{height:100%;border-radius:20px;background:linear-gradient(90deg,var(--saffron),var(--gold));transition:width .5s ease}
+
+/* ── STREAK CALENDAR ── */
+.streak-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:10px}
+.streak-day{aspect-ratio:1;border-radius:4px;background:#e8eaf5;font-size:.6rem;display:flex;align-items:center;justify-content:center;color:var(--muted);font-weight:600}
+.streak-day.done{background:linear-gradient(135deg,var(--saffron),var(--gold));color:#fff}
+.streak-day.today{outline:2px solid var(--deep-navy)}
+
+/* ── STAT ROW ── */
+.stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+.stat-box{background:linear-gradient(135deg,var(--navy),var(--light-navy));border-radius:12px;padding:14px 10px;text-align:center;color:#fff}
+.stat-box .sv{font-size:1.4rem;font-weight:800;color:var(--gold)}
+.stat-box .sl{font-size:.7rem;color:rgba(255,255,255,.75);margin-top:2px}
+
+/* ── REVISION BANK ITEM ── */
+.rev-item{background:#f7f8fc;border:1px solid #e8eaf5;border-radius:10px;padding:12px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.rev-item .ri-q{font-size:.85rem;font-weight:600;color:var(--deep-navy);flex:1}
+.rev-badge{padding:4px 10px;border-radius:20px;font-size:.72rem;font-weight:700;white-space:nowrap}
+.rev-badge.due{background:#ffebee;color:#c62828}
+.rev-badge.ok{background:#e8f5e9;color:#2e7d32}
 </style>
 </head>
 <body>
@@ -158,9 +177,7 @@ textarea.form-control:focus{border-color:var(--saffron)}
 </div>
 
 <!-- ══════════════════ APP ROOT ══════════════════ -->
-<div class="app" id="appRoot">
-  <!-- यहाँ JS से auth-screen या home-screen render होगी -->
-</div>
+<div class="app" id="appRoot"></div>
 
 <!-- ══════════════════ TOAST ══════════════════ -->
 <div class="toast-box" id="toastBox"></div>
@@ -191,7 +208,7 @@ function showToast(msg, type='ok') {
 // ══════════════════════════════════════════════
 let currentUser = null;
 let currentProfile = null;
-let authMode = 'login'; // 'login' | 'signup' | 'forgot'
+let authMode = 'login';
 
 async function initAuth() {
   const { data } = await sb.auth.getSession();
@@ -202,15 +219,13 @@ async function initAuth() {
   } else {
     renderAuth();
   }
-
   sb.auth.onAuthStateChange((event, session) => {
     if (event === 'SIGNED_IN' && session) {
       currentUser = session.user;
       loadProfile().then(renderHome);
     }
     if (event === 'SIGNED_OUT') {
-      currentUser = null;
-      currentProfile = null;
+      currentUser = null; currentProfile = null;
       renderAuth();
     }
   });
@@ -222,12 +237,11 @@ async function loadProfile() {
 }
 
 // ══════════════════════════════════════════════
-// SECTION: AUTH SCREEN (Login / Signup / Forgot)
+// SECTION: AUTH SCREEN
 // ══════════════════════════════════════════════
 function renderAuth() {
   document.getElementById('hdrUserBox').style.display = 'none';
   const root = document.getElementById('appRoot');
-
   if (authMode === 'signup') {
     root.innerHTML = `
     <div class="auth-wrap"><div class="auth-card">
@@ -246,7 +260,6 @@ function renderAuth() {
     </div></div>`;
     return;
   }
-
   if (authMode === 'forgot') {
     root.innerHTML = `
     <div class="auth-wrap"><div class="auth-card">
@@ -260,8 +273,6 @@ function renderAuth() {
     </div></div>`;
     return;
   }
-
-  // default: login
   root.innerHTML = `
   <div class="auth-wrap"><div class="auth-card">
     <div class="auth-logo">📘</div>
@@ -282,8 +293,7 @@ function renderAuth() {
 function setAuthMsg(text, type) {
   const el = document.getElementById('authMsg');
   if (!el) return;
-  el.textContent = text;
-  el.className = 'auth-msg show ' + type;
+  el.textContent = text; el.className = 'auth-msg show ' + type;
 }
 
 function setBtnLoading(id, loading, label) {
@@ -299,14 +309,9 @@ async function doSignup() {
   const pass = document.getElementById('suPass').value;
   if (!name || !email || !pass) { setAuthMsg('कृपया सभी फ़ील्ड भरें।', 'err'); return; }
   if (pass.length < 6) { setAuthMsg('Password कम से कम 6 अक्षर का हो।', 'err'); return; }
-
   setBtnLoading('suBtn', true);
-  const { error } = await sb.auth.signUp({
-    email, password: pass,
-    options: { data: { full_name: name } }
-  });
+  const { error } = await sb.auth.signUp({ email, password: pass, options: { data: { full_name: name } } });
   setBtnLoading('suBtn', false, 'Account बनाएं');
-
   if (error) { setAuthMsg(error.message, 'err'); return; }
   setAuthMsg('✅ Account बन गया! अब Login करें।', 'ok');
   showToast('Account सफलतापूर्वक बना!', 'ok');
@@ -317,11 +322,9 @@ async function doLogin() {
   const email = document.getElementById('liEmail').value.trim();
   const pass = document.getElementById('liPass').value;
   if (!email || !pass) { setAuthMsg('कृपया Email और Password डालें।', 'err'); return; }
-
   setBtnLoading('liBtn', true);
   const { error } = await sb.auth.signInWithPassword({ email, password: pass });
   setBtnLoading('liBtn', false, 'Login करें');
-
   if (error) { setAuthMsg('Email या Password गलत है।', 'err'); return; }
   showToast('Login सफल!', 'ok');
 }
@@ -329,11 +332,9 @@ async function doLogin() {
 async function doForgotPassword() {
   const email = document.getElementById('fgEmail').value.trim();
   if (!email) { setAuthMsg('कृपया Email डालें।', 'err'); return; }
-
   setBtnLoading('fgBtn', true);
   const { error } = await sb.auth.resetPasswordForEmail(email);
   setBtnLoading('fgBtn', false, 'Reset Link भेजें');
-
   if (error) { setAuthMsg(error.message, 'err'); return; }
   setAuthMsg('✅ Reset link आपके email पर भेज दिया गया है।', 'ok');
 }
@@ -344,7 +345,7 @@ async function logout() {
 }
 
 // ══════════════════════════════════════════════
-// SECTION: HOME (Dashboard)
+// SECTION: HOME (Dashboard) — Session 5: नए cards जोड़े
 // ══════════════════════════════════════════════
 function renderHome() {
   document.getElementById('hdrUserBox').style.display = 'block';
@@ -356,374 +357,264 @@ function renderHome() {
     <div class="dgrid">
       ${isAdmin ? `
       <div class="dcard" onclick="goSyllabusManager()">
-        <div class="ic">📚</div>
-        <div class="nm">सिलेबस</div>
-        <div class="lb">Subject/Topic Manage</div>
+        <div class="ic">📚</div><div class="nm">सिलेबस</div><div class="lb">Subject/Topic Manage</div>
       </div>
       <div class="dcard" onclick="goQuestionManager()">
-        <div class="ic">📝</div>
-        <div class="nm">प्रश्न बैंक</div>
-        <div class="lb">Add/Edit Questions</div>
+        <div class="ic">📝</div><div class="nm">प्रश्न बैंक</div><div class="lb">Add/Edit Questions</div>
       </div>` : ''}
       <div class="dcard" onclick="goQuizSetup()">
-        <div class="ic">🎯</div>
-        <div class="nm">क्विज़</div>
-        <div class="lb">अभ्यास शुरू करें</div>
+        <div class="ic">🎯</div><div class="nm">क्विज़</div><div class="lb">अभ्यास शुरू करें</div>
+      </div>
+      <div class="dcard" onclick="goProgress()">
+        <div class="ic">📊</div><div class="nm">प्रगति</div><div class="lb">Subject-wise Stats</div>
+      </div>
+      <div class="dcard" onclick="goBookmarks()">
+        <div class="ic">⭐</div><div class="nm">Bookmarks</div><div class="lb">सेव किए सवाल</div>
+      </div>
+      <div class="dcard" onclick="goRevisionBank()">
+        <div class="ic">🔁</div><div class="nm">Revision Bank</div><div class="lb">गलत सवाल दोहराएं</div>
+      </div>
+      <div class="dcard" onclick="goDailyTarget()">
+        <div class="ic">🎯</div><div class="nm">Daily Target</div><div class="lb">Streak Calendar</div>
       </div>
     </div>
   </div>`;
 }
+
 // ══════════════════════════════════════════════
 // SECTION: SYLLABUS MANAGER (Admin only)
-// — Subject → Topic → Micro-topic, tree-structure
 // ══════════════════════════════════════════════
-let smLevel = 'subjects';   // 'subjects' | 'topics' | 'microtopics'
-let smSubject = null;       // selected subject {id,name}
-let smTopic = null;         // selected topic {id,name}
+let smLevel = 'subjects';
+let smSubject = null;
+let smTopic = null;
 let smCache = { subjects: [], topics: [], microtopics: [] };
 
-function goSyllabusManager() {
-  smLevel = 'subjects';
-  smSubject = null;
-  smTopic = null;
-  loadSubjects();
-}
+function goSyllabusManager() { smLevel='subjects'; smSubject=null; smTopic=null; loadSubjects(); }
 
 async function loadSubjects() {
-  renderSyllabusShell('लोड हो रहा है...');
+  renderShell('लोड हो रहा है...');
   const { data, error } = await sb.from('subjects').select('*').order('sort_order');
-  if (error) { showToast('Subjects लोड नहीं हुए: ' + error.message, 'err'); return; }
-  smCache.subjects = data || [];
+  if (error) { showToast('Subjects लोड नहीं हुए: '+error.message,'err'); return; }
+  smCache.subjects = data||[];
   const { data: allTopics } = await sb.from('topics').select('id, subject_id');
   smCache._topicCounts = {};
-  (allTopics || []).forEach(t => { smCache._topicCounts[t.subject_id] = (smCache._topicCounts[t.subject_id] || 0) + 1; });
-  smLevel = 'subjects';
-  renderSyllabusManager();
+  (allTopics||[]).forEach(t=>{ smCache._topicCounts[t.subject_id]=(smCache._topicCounts[t.subject_id]||0)+1; });
+  smLevel='subjects'; renderSyllabusManager();
 }
 
-function loadTopicsById(subId) {
-  const subject = smCache.subjects.find(s => s.id === subId);
-  if (subject) loadTopics(subject);
-}
+function loadTopicsById(subId) { const s=smCache.subjects.find(x=>x.id===subId); if(s) loadTopics(s); }
 
 async function loadTopics(subject) {
-  smSubject = subject;
-  renderSyllabusShell('लोड हो रहा है...');
-  const { data, error } = await sb.from('topics').select('*').eq('subject_id', subject.id).order('sort_order');
-  if (error) { showToast('Topics लोड नहीं हुए: ' + error.message, 'err'); return; }
-  smCache.topics = data || [];
+  smSubject=subject; renderShell('लोड हो रहा है...');
+  const { data, error } = await sb.from('topics').select('*').eq('subject_id',subject.id).order('sort_order');
+  if (error) { showToast('Topics लोड नहीं हुए: '+error.message,'err'); return; }
+  smCache.topics=data||[];
   const { data: allMicro } = await sb.from('micro_topics').select('id, topic_id');
-  smCache._microCounts = {};
-  (allMicro || []).forEach(m => { smCache._microCounts[m.topic_id] = (smCache._microCounts[m.topic_id] || 0) + 1; });
-  smLevel = 'topics';
-  renderSyllabusManager();
+  smCache._microCounts={};
+  (allMicro||[]).forEach(m=>{ smCache._microCounts[m.topic_id]=(smCache._microCounts[m.topic_id]||0)+1; });
+  smLevel='topics'; renderSyllabusManager();
 }
 
-function loadMicroTopicsById(topId) {
-  const topic = smCache.topics.find(t => t.id === topId);
-  if (topic) loadMicroTopics(topic);
-}
+function loadMicroTopicsById(topId) { const t=smCache.topics.find(x=>x.id===topId); if(t) loadMicroTopics(t); }
 
 async function loadMicroTopics(topic) {
-  smTopic = topic;
-  renderSyllabusShell('लोड हो रहा है...');
-  const { data, error } = await sb.from('micro_topics').select('*').eq('topic_id', topic.id).order('sort_order');
-  if (error) { showToast('Micro-topics लोड नहीं हुए: ' + error.message, 'err'); return; }
-  smCache.microtopics = data || [];
-  smLevel = 'microtopics';
-  renderSyllabusManager();
+  smTopic=topic; renderShell('लोड हो रहा है...');
+  const { data, error } = await sb.from('micro_topics').select('*').eq('topic_id',topic.id).order('sort_order');
+  if (error) { showToast('Micro-topics लोड नहीं हुए: '+error.message,'err'); return; }
+  smCache.microtopics=data||[];
+  smLevel='microtopics'; renderSyllabusManager();
 }
 
-function renderSyllabusShell(msg) {
-  document.getElementById('appRoot').innerHTML = `<div class="card"><p style="color:var(--muted);font-size:.85rem">${msg}</p></div>`;
-}
+function renderShell(msg) { document.getElementById('appRoot').innerHTML=`<div class="card"><p style="color:var(--muted);font-size:.85rem">${msg}</p></div>`; }
 
 function smCrumbHtml() {
-  let html = `<div class="crumb">`;
-  html += `<span onclick="renderHome()">🏠 होम</span> ›`;
-  html += smLevel === 'subjects'
-    ? ` <span class="cur">सिलेबस</span>`
-    : ` <span onclick="loadSubjects()">सिलेबस</span> ›`;
-  if (smLevel === 'topics') html += ` <span class="cur">${smSubject.name}</span>`;
-  if (smLevel === 'microtopics') {
-    html += ` <span onclick="loadTopics(smSubject)">${smSubject.name}</span> › <span class="cur">${smTopic.name}</span>`;
-  }
-  html += `</div>`;
-  return html;
+  let h=`<div class="crumb"><span onclick="renderHome()">🏠 होम</span> ›`;
+  h += smLevel==='subjects' ? ` <span class="cur">सिलेबस</span>` : ` <span onclick="loadSubjects()">सिलेबस</span> ›`;
+  if(smLevel==='topics') h+=` <span class="cur">${smSubject.name}</span>`;
+  if(smLevel==='microtopics') h+=` <span onclick="loadTopics(smSubject)">${smSubject.name}</span> › <span class="cur">${smTopic.name}</span>`;
+  return h+'</div>';
 }
 
 function renderSyllabusManager() {
-  const root = document.getElementById('appRoot');
-
-  if (smLevel === 'subjects') {
-    const rows = smCache.subjects.length ? smCache.subjects.map(s => `
+  const root=document.getElementById('appRoot');
+  if(smLevel==='subjects') {
+    const rows=smCache.subjects.length ? smCache.subjects.map(s=>`
       <div class="tree-item" id="row-${s.id}">
         <div class="ti-name" onclick="loadTopicsById('${s.id}')">📖 <span id="name-${s.id}">${s.name}</span>
-          <span class="ti-count">${smCache._topicCounts[s.id] || 0} topics</span>
+          <span class="ti-count">${smCache._topicCounts[s.id]||0} topics</span>
         </div>
         <div class="tree-actions">
           <button class="icon-btn" onclick="event.stopPropagation();startEditSubject('${s.id}','${s.name.replace(/'/g,"\\'")}')">✏️</button>
           <button class="icon-btn del" onclick="event.stopPropagation();confirmDelete('subject','${s.id}','${s.name.replace(/'/g,"\\'")}')">🗑️</button>
         </div>
-      </div>`).join('') : `<div class="empty-state"><div class="em-ic">📭</div>अभी कोई Subject नहीं है। नीचे से जोड़ें।</div>`;
-
-    root.innerHTML = `
-    <div class="card">
-      ${smCrumbHtml()}
-      <div class="ctitle">📚 सिलेबस — Subjects</div>
-      ${rows}
-      <div class="add-row">
-        <input type="text" id="newSubjectInput" placeholder="नया Subject नाम लिखें (जैसे: इतिहास)">
-        <button class="btn btn-primary" onclick="addSubject()">+ जोड़ें</button>
-      </div>
-    </div>`;
+      </div>`).join('') : `<div class="empty-state"><div class="em-ic">📭</div>अभी कोई Subject नहीं है।</div>`;
+    root.innerHTML=`<div class="card">${smCrumbHtml()}<div class="ctitle">📚 Subjects</div>${rows}
+      <div class="add-row"><input type="text" id="newSubjectInput" placeholder="नया Subject नाम"><button class="btn btn-primary" onclick="addSubject()">+ जोड़ें</button></div></div>`;
     return;
   }
-
-  if (smLevel === 'topics') {
-    const rows = smCache.topics.length ? smCache.topics.map(t => `
+  if(smLevel==='topics') {
+    const rows=smCache.topics.length ? smCache.topics.map(t=>`
       <div class="tree-item" id="row-${t.id}">
         <div class="ti-name" onclick="loadMicroTopicsById('${t.id}')">📑 <span id="name-${t.id}">${t.name}</span>
-          <span class="ti-count">${smCache._microCounts[t.id] || 0} micro-topics</span>
+          <span class="ti-count">${smCache._microCounts[t.id]||0} micro-topics</span>
         </div>
         <div class="tree-actions">
           <button class="icon-btn" onclick="event.stopPropagation();startEditTopic('${t.id}','${t.name.replace(/'/g,"\\'")}')">✏️</button>
           <button class="icon-btn del" onclick="event.stopPropagation();confirmDelete('topic','${t.id}','${t.name.replace(/'/g,"\\'")}')">🗑️</button>
         </div>
-      </div>`).join('') : `<div class="empty-state"><div class="em-ic">📭</div>इस Subject में अभी कोई Topic नहीं है।</div>`;
-
-    root.innerHTML = `
-    <div class="card">
-      ${smCrumbHtml()}
-      <div class="ctitle">📑 ${smSubject.name} — Topics</div>
-      ${rows}
-      <div class="add-row">
-        <input type="text" id="newTopicInput" placeholder="नया Topic नाम लिखें (जैसे: प्राचीन भारत)">
-        <button class="btn btn-primary" onclick="addTopic()">+ जोड़ें</button>
-      </div>
-    </div>`;
+      </div>`).join('') : `<div class="empty-state"><div class="em-ic">📭</div>कोई Topic नहीं है।</div>`;
+    root.innerHTML=`<div class="card">${smCrumbHtml()}<div class="ctitle">📑 ${smSubject.name}</div>${rows}
+      <div class="add-row"><input type="text" id="newTopicInput" placeholder="नया Topic नाम"><button class="btn btn-primary" onclick="addTopic()">+ जोड़ें</button></div></div>`;
     return;
   }
-
-  if (smLevel === 'microtopics') {
-    const rows = smCache.microtopics.length ? smCache.microtopics.map(m => `
+  if(smLevel==='microtopics') {
+    const rows=smCache.microtopics.length ? smCache.microtopics.map(m=>`
       <div class="tree-item" style="cursor:default" id="row-${m.id}">
         <div class="ti-name">📄 <span id="name-${m.id}">${m.name}</span></div>
         <div class="tree-actions">
           <button class="icon-btn" onclick="startEditMicro('${m.id}','${m.name.replace(/'/g,"\\'")}')">✏️</button>
           <button class="icon-btn del" onclick="confirmDelete('microtopic','${m.id}','${m.name.replace(/'/g,"\\'")}')">🗑️</button>
         </div>
-      </div>`).join('') : `<div class="empty-state"><div class="em-ic">📭</div>इस Topic में अभी कोई Micro-topic नहीं है।</div>`;
-
-    root.innerHTML = `
-    <div class="card">
-      ${smCrumbHtml()}
-      <div class="ctitle">📄 ${smTopic.name} — Micro-topics</div>
-      ${rows}
-      <div class="add-row">
-        <input type="text" id="newMicroInput" placeholder="नया Micro-topic नाम लिखें (जैसे: सिंधु घाटी सभ्यता)">
-        <button class="btn btn-primary" onclick="addMicroTopic()">+ जोड़ें</button>
-      </div>
-    </div>`;
-    return;
+      </div>`).join('') : `<div class="empty-state"><div class="em-ic">📭</div>कोई Micro-topic नहीं है।</div>`;
+    root.innerHTML=`<div class="card">${smCrumbHtml()}<div class="ctitle">📄 ${smTopic.name}</div>${rows}
+      <div class="add-row"><input type="text" id="newMicroInput" placeholder="नया Micro-topic नाम"><button class="btn btn-primary" onclick="addMicroTopic()">+ जोड़ें</button></div></div>`;
   }
 }
 
-// ── ADD ──
 async function addSubject() {
-  const input = document.getElementById('newSubjectInput');
-  const name = input.value.trim();
-  if (!name) { showToast('नाम लिखें', 'err'); return; }
-  const sort_order = smCache.subjects.length;
-  const { error } = await sb.from('subjects').insert({ name, sort_order });
-  if (error) { showToast('जोड़ने में दिक्कत: ' + error.message, 'err'); return; }
-  showToast('Subject जुड़ गया ✅', 'ok');
-  loadSubjects();
+  const input=document.getElementById('newSubjectInput'), name=input.value.trim();
+  if(!name){showToast('नाम लिखें','err');return;}
+  const {error}=await sb.from('subjects').insert({name,sort_order:smCache.subjects.length});
+  if(error){showToast('जोड़ने में दिक्कत: '+error.message,'err');return;}
+  showToast('Subject जुड़ गया ✅','ok'); loadSubjects();
 }
-
 async function addTopic() {
-  const input = document.getElementById('newTopicInput');
-  const name = input.value.trim();
-  if (!name) { showToast('नाम लिखें', 'err'); return; }
-  const sort_order = smCache.topics.length;
-  const { error } = await sb.from('topics').insert({ name, subject_id: smSubject.id, sort_order });
-  if (error) { showToast('जोड़ने में दिक्कत: ' + error.message, 'err'); return; }
-  showToast('Topic जुड़ गया ✅', 'ok');
-  loadTopics(smSubject);
+  const input=document.getElementById('newTopicInput'), name=input.value.trim();
+  if(!name){showToast('नाम लिखें','err');return;}
+  const {error}=await sb.from('topics').insert({name,subject_id:smSubject.id,sort_order:smCache.topics.length});
+  if(error){showToast('जोड़ने में दिक्कत: '+error.message,'err');return;}
+  showToast('Topic जुड़ गया ✅','ok'); loadTopics(smSubject);
 }
-
 async function addMicroTopic() {
-  const input = document.getElementById('newMicroInput');
-  const name = input.value.trim();
-  if (!name) { showToast('नाम लिखें', 'err'); return; }
-  const sort_order = smCache.microtopics.length;
-  const { error } = await sb.from('micro_topics').insert({ name, topic_id: smTopic.id, sort_order });
-  if (error) { showToast('जोड़ने में दिक्कत: ' + error.message, 'err'); return; }
-  showToast('Micro-topic जुड़ गया ✅', 'ok');
-  loadMicroTopics(smTopic);
+  const input=document.getElementById('newMicroInput'), name=input.value.trim();
+  if(!name){showToast('नाम लिखें','err');return;}
+  const {error}=await sb.from('micro_topics').insert({name,topic_id:smTopic.id,sort_order:smCache.microtopics.length});
+  if(error){showToast('जोड़ने में दिक्कत: '+error.message,'err');return;}
+  showToast('Micro-topic जुड़ गया ✅','ok'); loadMicroTopics(smTopic);
 }
 
-// ── EDIT (inline) ──
-function startEditSubject(id, oldName) { startInlineEdit(id, oldName, 'subjects'); }
-function startEditTopic(id, oldName) { startInlineEdit(id, oldName, 'topics'); }
-function startEditMicro(id, oldName) { startInlineEdit(id, oldName, 'micro_topics'); }
+function startEditSubject(id,old){startInlineEdit(id,old,'subjects');}
+function startEditTopic(id,old){startInlineEdit(id,old,'topics');}
+function startEditMicro(id,old){startInlineEdit(id,old,'micro_topics');}
 
-function startInlineEdit(id, oldName, table) {
-  const nameSpan = document.getElementById('name-' + id);
-  if (!nameSpan) return;
-  nameSpan.outerHTML = `<input class="edit-input" id="edit-${id}" value="${oldName.replace(/"/g,'&quot;')}" onkeydown="if(event.key==='Enter')saveInlineEdit('${id}','${table}')">`;
-  document.getElementById('edit-' + id).focus();
-  const row = document.getElementById('row-' + id);
-  const actions = row.querySelector('.tree-actions');
-  actions.innerHTML = `
-    <button class="icon-btn" onclick="saveInlineEdit('${id}','${table}')">✅</button>
+function startInlineEdit(id,oldName,table) {
+  const sp=document.getElementById('name-'+id);
+  if(!sp)return;
+  sp.outerHTML=`<input class="edit-input" id="edit-${id}" value="${oldName.replace(/"/g,'&quot;')}" onkeydown="if(event.key==='Enter')saveInlineEdit('${id}','${table}')">`;
+  document.getElementById('edit-'+id).focus();
+  const row=document.getElementById('row-'+id);
+  const actions=row.querySelector('.tree-actions');
+  actions.innerHTML=`<button class="icon-btn" onclick="saveInlineEdit('${id}','${table}')">✅</button>
     <button class="icon-btn" onclick="${table==='subjects'?'loadSubjects()':table==='topics'?'loadTopics(smSubject)':'loadMicroTopics(smTopic)'}">✖️</button>`;
 }
 
-async function saveInlineEdit(id, table) {
-  const input = document.getElementById('edit-' + id);
-  const newName = input.value.trim();
-  if (!newName) { showToast('नाम खाली नहीं हो सकता', 'err'); return; }
-  const { error } = await sb.from(table).update({ name: newName }).eq('id', id);
-  if (error) { showToast('Update नहीं हुआ: ' + error.message, 'err'); return; }
-  showToast('अपडेट हो गया ✅', 'ok');
-  if (table === 'subjects') loadSubjects();
-  else if (table === 'topics') loadTopics(smSubject);
+async function saveInlineEdit(id,table) {
+  const input=document.getElementById('edit-'+id);
+  const newName=input.value.trim();
+  if(!newName){showToast('नाम खाली नहीं हो सकता','err');return;}
+  const {error}=await sb.from(table).update({name:newName}).eq('id',id);
+  if(error){showToast('Update नहीं हुआ: '+error.message,'err');return;}
+  showToast('अपडेट हो गया ✅','ok');
+  if(table==='subjects') loadSubjects();
+  else if(table==='topics') loadTopics(smSubject);
   else loadMicroTopics(smTopic);
 }
 
-// ── DELETE (confirm modal) ──
-let pendingDelete = null;
-function confirmDelete(type, id, name) {
-  pendingDelete = { type, id };
-  const warnMap = {
-    subject: 'इसके अंदर के सभी Topics, Micro-topics और Questions भी डिलीट हो जाएंगे।',
-    topic: 'इसके अंदर के सभी Micro-topics और Questions भी डिलीट हो जाएंगे।',
-    microtopic: 'इसके अंदर के सभी Questions भी डिलीट हो जाएंगे।'
-  };
-  document.body.insertAdjacentHTML('beforeend', `
-  <div class="modal-overlay" id="delModal">
-    <div class="modal-box">
-      <h3>⚠️ "${name}" डिलीट करें?</h3>
-      <p>${warnMap[type]} यह पलटा नहीं जा सकता।</p>
-      <div class="modal-actions">
-        <button class="btn btn-secondary" onclick="closeDeleteModal()">रद्द करें</button>
-        <button class="btn btn-danger" onclick="doDelete()">हाँ, डिलीट करें</button>
-      </div>
+let pendingDelete=null;
+function confirmDelete(type,id,name) {
+  pendingDelete={type,id};
+  const warnMap={subject:'इसके अंदर के सभी Topics, Micro-topics और Questions भी डिलीट हो जाएंगे।',topic:'इसके अंदर के सभी Micro-topics और Questions भी डिलीट हो जाएंगे।',microtopic:'इसके अंदर के सभी Questions भी डिलीट हो जाएंगे।'};
+  document.body.insertAdjacentHTML('beforeend',`
+  <div class="modal-overlay" id="delModal"><div class="modal-box">
+    <h3>⚠️ "${name}" डिलीट करें?</h3>
+    <p>${warnMap[type]} यह पलटा नहीं जा सकता।</p>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeDeleteModal()">रद्द करें</button>
+      <button class="btn btn-danger" onclick="doDelete()">हाँ, डिलीट करें</button>
     </div>
-  </div>`);
+  </div></div>`);
 }
-
-function closeDeleteModal() {
-  document.getElementById('delModal')?.remove();
-  pendingDelete = null;
-}
-
+function closeDeleteModal(){document.getElementById('delModal')?.remove();pendingDelete=null;}
 async function doDelete() {
-  if (!pendingDelete) return;
-  const tableMap = { subject: 'subjects', topic: 'topics', microtopic: 'micro_topics' };
-  const { error } = await sb.from(tableMap[pendingDelete.type]).delete().eq('id', pendingDelete.id);
+  if(!pendingDelete)return;
+  const tableMap={subject:'subjects',topic:'topics',microtopic:'micro_topics'};
+  const {error}=await sb.from(tableMap[pendingDelete.type]).delete().eq('id',pendingDelete.id);
   closeDeleteModal();
-  if (error) { showToast('डिलीट नहीं हुआ: ' + error.message, 'err'); return; }
-  showToast('डिलीट हो गया ✅', 'ok');
-  if (pendingDelete.type === 'subject') loadSubjects();
-  else if (pendingDelete.type === 'topic') loadTopics(smSubject);
+  if(error){showToast('डिलीट नहीं हुआ: '+error.message,'err');return;}
+  showToast('डिलीट हो गया ✅','ok');
+  if(pendingDelete.type==='subject') loadSubjects();
+  else if(pendingDelete.type==='topic') loadTopics(smSubject);
   else loadMicroTopics(smTopic);
 }
 
 // ══════════════════════════════════════════════
 // SECTION: QUESTION MANAGER (Admin only)
 // ══════════════════════════════════════════════
-let qmTab = 'single'; // 'single', 'bulk', 'list', 'flagged'
-let qmFilters = { sub: '', top: '', mic: '' };
-let qmDropdownData = { subs: [], tops: [], mics: [] };
+let qmTab='single';
+let qmFilters={sub:'',top:'',mic:''};
+let qmDropdownData={subs:[],tops:[],mics:[]};
 
 async function goQuestionManager() {
-  renderSyllabusShell('डेटा लोड हो रहा है...');
-  const { data } = await sb.from('subjects').select('id, name').order('sort_order');
-  qmDropdownData.subs = data || [];
-  qmFilters = { sub: '', top: '', mic: '' };
-  renderQM();
+  renderShell('डेटा लोड हो रहा है...');
+  const {data}=await sb.from('subjects').select('id, name').order('sort_order');
+  qmDropdownData.subs=data||[];
+  qmFilters={sub:'',top:'',mic:''}; renderQM();
 }
 
 async function fetchQMTopics(subId) {
-  qmFilters.sub = subId; qmFilters.top = ''; qmFilters.mic = '';
-  qmDropdownData.tops = []; qmDropdownData.mics = [];
-  if(subId) {
-    const { data } = await sb.from('topics').select('id, name').eq('subject_id', subId).order('sort_order');
-    qmDropdownData.tops = data || [];
-  }
+  qmFilters.sub=subId; qmFilters.top=''; qmFilters.mic='';
+  qmDropdownData.tops=[]; qmDropdownData.mics=[];
+  if(subId){const {data}=await sb.from('topics').select('id,name').eq('subject_id',subId).order('sort_order'); qmDropdownData.tops=data||[];}
   renderQM();
 }
-
 async function fetchQMMicro(topId) {
-  qmFilters.top = topId; qmFilters.mic = '';
-  qmDropdownData.mics = [];
-  if(topId) {
-    const { data } = await sb.from('micro_topics').select('id, name').eq('topic_id', topId).order('sort_order');
-    qmDropdownData.mics = data || [];
-  }
+  qmFilters.top=topId; qmFilters.mic=''; qmDropdownData.mics=[];
+  if(topId){const {data}=await sb.from('micro_topics').select('id,name').eq('topic_id',topId).order('sort_order'); qmDropdownData.mics=data||[];}
   renderQM();
 }
-
-function setQMFilterMic(micId) {
-  qmFilters.mic = micId;
-  renderQM();
-}
-
-function setQMTab(tab) {
-  qmTab = tab;
-  renderQM();
-}
+function setQMFilterMic(micId){qmFilters.mic=micId; renderQM();}
+function setQMTab(tab){qmTab=tab; renderQM();}
 
 function renderQM() {
-  const root = document.getElementById('appRoot');
-
-  const selSub = `<select onchange="fetchQMTopics(this.value)">
-    <option value="">-- विषय (Subject) --</option>
-    ${qmDropdownData.subs.map(s => `<option value="${s.id}" ${qmFilters.sub===s.id?'selected':''}>${s.name}</option>`).join('')}
-  </select>`;
-  const selTop = `<select onchange="fetchQMMicro(this.value)" ${!qmFilters.sub?'disabled':''}>
-    <option value="">-- टॉपिक (Topic) --</option>
-    ${qmDropdownData.tops.map(t => `<option value="${t.id}" ${qmFilters.top===t.id?'selected':''}>${t.name}</option>`).join('')}
-  </select>`;
-  const selMic = `<select onchange="setQMFilterMic(this.value)" ${!qmFilters.top?'disabled':''}>
-    <option value="">-- माइक्रो-टॉपिक --</option>
-    ${qmDropdownData.mics.map(m => `<option value="${m.id}" ${qmFilters.mic===m.id?'selected':''}>${m.name}</option>`).join('')}
-  </select>`;
-
-  let contentHtml = '';
-  if(!qmFilters.mic && qmTab !== 'flagged') {
-    contentHtml = `<div class="empty-state"><div class="em-ic">👆</div>आगे बढ़ने के लिए ऊपर से Subject, Topic और Micro-topic चुनें।</div>`;
-  } else {
-    if(qmTab === 'single') contentHtml = renderQMSingleForm();
-    else if(qmTab === 'bulk') contentHtml = renderQMBulkForm();
-    else if(qmTab === 'list') { contentHtml = `<div id="qmListWrap"><p class="empty-state">लोड हो रहा है...</p></div>`; setTimeout(loadQMList, 50); }
-    else if(qmTab === 'flagged') { contentHtml = `<div id="qmFlaggedWrap"><p class="empty-state">लोड हो रहा है...</p></div>`; setTimeout(loadQMFlagged, 50); }
+  const root=document.getElementById('appRoot');
+  const selSub=`<select onchange="fetchQMTopics(this.value)"><option value="">-- विषय --</option>${qmDropdownData.subs.map(s=>`<option value="${s.id}" ${qmFilters.sub===s.id?'selected':''}>${s.name}</option>`).join('')}</select>`;
+  const selTop=`<select onchange="fetchQMMicro(this.value)" ${!qmFilters.sub?'disabled':''}><option value="">-- टॉपिक --</option>${qmDropdownData.tops.map(t=>`<option value="${t.id}" ${qmFilters.top===t.id?'selected':''}>${t.name}</option>`).join('')}</select>`;
+  const selMic=`<select onchange="setQMFilterMic(this.value)" ${!qmFilters.top?'disabled':''}><option value="">-- माइक्रो-टॉपिक --</option>${qmDropdownData.mics.map(m=>`<option value="${m.id}" ${qmFilters.mic===m.id?'selected':''}>${m.name}</option>`).join('')}</select>`;
+  let contentHtml='';
+  if(!qmFilters.mic && qmTab!=='flagged') contentHtml=`<div class="empty-state"><div class="em-ic">👆</div>ऊपर से Subject, Topic और Micro-topic चुनें।</div>`;
+  else {
+    if(qmTab==='single') contentHtml=renderQMSingleForm();
+    else if(qmTab==='bulk') contentHtml=renderQMBulkForm();
+    else if(qmTab==='list'){contentHtml=`<div id="qmListWrap"><p class="empty-state">लोड हो रहा है...</p></div>`;setTimeout(loadQMList,50);}
+    else if(qmTab==='flagged'){contentHtml=`<div id="qmFlaggedWrap"><p class="empty-state">लोड हो रहा है...</p></div>`;setTimeout(loadQMFlagged,50);}
   }
-
-  root.innerHTML = `
-  <div class="card" style="max-width:800px; margin:0 auto;">
-    <div class="crumb"><span onclick="renderHome()">🏠 होम</span> › <span class="cur">प्रश्न बैंक (Question Manager)</span></div>
-
+  root.innerHTML=`
+  <div class="card" style="max-width:800px;margin:0 auto">
+    <div class="crumb"><span onclick="renderHome()">🏠 होम</span> › <span class="cur">प्रश्न बैंक</span></div>
     <div class="tabs">
-      <div class="tab ${qmTab==='single'?'active':''}" onclick="setQMTab('single')">✏️ एक प्रश्न जोड़ें</div>
+      <div class="tab ${qmTab==='single'?'active':''}" onclick="setQMTab('single')">✏️ एक प्रश्न</div>
       <div class="tab ${qmTab==='bulk'?'active':''}" onclick="setQMTab('bulk')">📦 Bulk JSON</div>
-      <div class="tab ${qmTab==='list'?'active':''}" onclick="setQMTab('list')">📋 प्रश्न लिस्ट</div>
-      <div class="tab ${qmTab==='flagged'?'active':''}" onclick="setQMTab('flagged')">🚩 रिपोर्ट्स (Flagged)</div>
+      <div class="tab ${qmTab==='list'?'active':''}" onclick="setQMTab('list')">📋 लिस्ट</div>
+      <div class="tab ${qmTab==='flagged'?'active':''}" onclick="setQMTab('flagged')">🚩 Flagged</div>
     </div>
-
-    ${qmTab !== 'flagged' ? `<div class="qm-filters">${selSub}${selTop}${selMic}</div>` : ''}
-
-    <div style="border-top:1px solid #e0e4f0; margin:15px 0; padding-top:15px;">
-      ${contentHtml}
-    </div>
+    ${qmTab!=='flagged'?`<div class="qm-filters">${selSub}${selTop}${selMic}</div>`:''}
+    <div style="border-top:1px solid #e0e4f0;margin:15px 0;padding-top:15px">${contentHtml}</div>
   </div>`;
 }
 
 function renderQMSingleForm() {
   return `
-  <div class="field"><label>प्रश्न (Question)</label><textarea id="qText" class="form-control" placeholder="प्रश्न यहाँ लिखें..."></textarea></div>
+  <div class="field"><label>प्रश्न</label><textarea id="qText" class="form-control" placeholder="प्रश्न यहाँ लिखें..."></textarea></div>
   <div class="qm-filters">
     <div class="field"><label>Option A</label><input type="text" id="qOpA" placeholder="विकल्प A"></div>
     <div class="field"><label>Option B</label><input type="text" id="qOpB" placeholder="विकल्प B"></div>
@@ -731,102 +622,58 @@ function renderQMSingleForm() {
     <div class="field"><label>Option D</label><input type="text" id="qOpD" placeholder="विकल्प D"></div>
   </div>
   <div class="qm-filters" style="grid-template-columns:1fr 1fr 1fr">
-    <div class="field"><label>सही उत्तर</label>
-      <select id="qAns">
-        <option value="a">Option A</option><option value="b">Option B</option><option value="c">Option C</option><option value="d">Option D</option>
-      </select>
-    </div>
-    <div class="field"><label>कठिनाई (Difficulty)</label>
-      <select id="qDiff"><option value="easy">Easy</option><option value="medium" selected>Medium</option><option value="hard">Hard</option></select>
-    </div>
-    <div class="field"><label style="display:flex;align-items:center;gap:5px;height:100%;cursor:pointer">
-      <input type="checkbox" id="qPyq" style="width:16px;height:16px"> यह PYQ (पिछले वर्ष का प्रश्न) है
-    </label></div>
+    <div class="field"><label>सही उत्तर</label><select id="qAns"><option value="a">A</option><option value="b">B</option><option value="c">C</option><option value="d">D</option></select></div>
+    <div class="field"><label>Difficulty</label><select id="qDiff"><option value="easy">Easy</option><option value="medium" selected>Medium</option><option value="hard">Hard</option></select></div>
+    <div class="field"><label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="qPyq" style="width:16px;height:16px"> PYQ है</label></div>
   </div>
-  <div class="field"><label>व्याख्या (Explanation) - Optional</label><textarea id="qExp" class="form-control" style="min-height:60px" placeholder="उत्तर की व्याख्या..."></textarea></div>
-  <div class="field"><label>Source / Exam Name - Optional</label><input type="text" id="qSrc" placeholder="e.g. RAS Pre 2023"></div>
+  <div class="field"><label>Explanation (Optional)</label><textarea id="qExp" class="form-control" style="min-height:60px" placeholder="उत्तर की व्याख्या..."></textarea></div>
+  <div class="field"><label>Source (Optional)</label><input type="text" id="qSrc" placeholder="e.g. RAS Pre 2023"></div>
   <button class="btn btn-primary" onclick="saveSingleQ()">प्रश्न Save करें</button>`;
 }
 
 async function saveSingleQ() {
-  const q = {
-    micro_topic_id: qmFilters.mic,
-    question: document.getElementById('qText').value.trim(),
-    option_a: document.getElementById('qOpA').value.trim(),
-    option_b: document.getElementById('qOpB').value.trim(),
-    option_c: document.getElementById('qOpC').value.trim(),
-    option_d: document.getElementById('qOpD').value.trim(),
-    correct_option: document.getElementById('qAns').value,
-    difficulty: document.getElementById('qDiff').value,
-    is_pyq: document.getElementById('qPyq').checked,
-    explanation: document.getElementById('qExp').value.trim(),
-    source: document.getElementById('qSrc').value.trim()
-  };
-  if(!q.question || !q.option_a || !q.option_b || !q.option_c || !q.option_d) { showToast('प्रश्न और सभी 4 विकल्प भरना अनिवार्य है', 'err'); return; }
-
-  showToast('सेव हो रहा है...', 'ok');
-  const { error } = await sb.from('questions').insert(q);
-  if(error) { showToast(error.message, 'err'); return; }
-  showToast('प्रश्न सफलतापूर्वक जुड़ गया ✅', 'ok');
-  setQMTab('single');
+  const q={micro_topic_id:qmFilters.mic,question:document.getElementById('qText').value.trim(),
+    option_a:document.getElementById('qOpA').value.trim(),option_b:document.getElementById('qOpB').value.trim(),
+    option_c:document.getElementById('qOpC').value.trim(),option_d:document.getElementById('qOpD').value.trim(),
+    correct_option:document.getElementById('qAns').value,difficulty:document.getElementById('qDiff').value,
+    is_pyq:document.getElementById('qPyq').checked,explanation:document.getElementById('qExp').value.trim(),
+    source:document.getElementById('qSrc').value.trim()};
+  if(!q.question||!q.option_a||!q.option_b||!q.option_c||!q.option_d){showToast('सभी 4 विकल्प और प्रश्न भरें','err');return;}
+  showToast('सेव हो रहा है...','ok');
+  const {error}=await sb.from('questions').insert(q);
+  if(error){showToast(error.message,'err');return;}
+  showToast('प्रश्न जुड़ गया ✅','ok'); setQMTab('single');
 }
 
 function renderQMBulkForm() {
-  return `
-  <div class="field"><label>JSON पेस्ट करें (Format: Array of Objects)</label>
-  <textarea id="qBulkJson" class="form-control" style="min-height:200px;font-family:monospace" placeholder='[
-  {
-    "question": "सिंधु घाटी...",
-    "option_a": "...",
-    "option_b": "...",
-    "option_c": "...",
-    "option_d": "...",
-    "correct_option": "b",
-    "explanation": "...",
-    "difficulty": "medium",
-    "is_pyq": true,
-    "source": "RAS 2018"
-  }
-]'></textarea></div>
+  return `<div class="field"><label>JSON पेस्ट करें (Array of Objects)</label>
+  <textarea id="qBulkJson" class="form-control" style="min-height:200px;font-family:monospace" placeholder='[{"question":"...","option_a":"...","option_b":"...","option_c":"...","option_d":"...","correct_option":"b","explanation":"...","difficulty":"medium","is_pyq":true,"source":"RAS 2018"}]'></textarea></div>
   <button class="btn btn-primary" onclick="saveBulkQ()">Bulk Upload करें</button>`;
 }
 
 async function saveBulkQ() {
   try {
-    const raw = document.getElementById('qBulkJson').value;
-    const arr = JSON.parse(raw);
+    const arr=JSON.parse(document.getElementById('qBulkJson').value);
     if(!Array.isArray(arr)) throw new Error('JSON Array Format में होना चाहिए []');
-
-    const payload = arr.map(q => ({
-      micro_topic_id: qmFilters.mic,
-      question: q.question, option_a: q.option_a, option_b: q.option_b, option_c: q.option_c, option_d: q.option_d,
-      correct_option: q.correct_option.toLowerCase(), explanation: q.explanation || '', source: q.source || '',
-      difficulty: q.difficulty || 'medium', is_pyq: q.is_pyq || false
-    }));
-
-    showToast(`Uploading ${payload.length} questions...`, 'ok');
-    const { error } = await sb.from('questions').insert(payload);
+    const payload=arr.map(q=>({micro_topic_id:qmFilters.mic,question:q.question,option_a:q.option_a,
+      option_b:q.option_b,option_c:q.option_c,option_d:q.option_d,correct_option:q.correct_option.toLowerCase(),
+      explanation:q.explanation||'',source:q.source||'',difficulty:q.difficulty||'medium',is_pyq:q.is_pyq||false}));
+    showToast(`Uploading ${payload.length} questions...`,'ok');
+    const {error}=await sb.from('questions').insert(payload);
     if(error) throw error;
-    showToast(`${payload.length} प्रश्न जुड़ गए ✅`, 'ok');
-    document.getElementById('qBulkJson').value = '';
-  } catch(e) {
-    showToast('Error: ' + e.message, 'err');
-  }
+    showToast(`${payload.length} प्रश्न जुड़ गए ✅`,'ok');
+    document.getElementById('qBulkJson').value='';
+  } catch(e){ showToast('Error: '+e.message,'err'); }
 }
 
 async function loadQMList() {
-  const wrap = document.getElementById('qmListWrap');
-  const { data, error } = await sb.from('questions').select('id, question, option_a, option_b, option_c, option_d, correct_option, difficulty, is_pyq').eq('micro_topic_id', qmFilters.mic).order('created_at', {ascending: false});
-  if(error) { wrap.innerHTML = `<p class="empty-state">त्रुटि: ${error.message}</p>`; return; }
-  if(!data || data.length === 0) { wrap.innerHTML = `<div class="empty-state"><div class="em-ic">📭</div>कोई प्रश्न नहीं मिला।</div>`; return; }
-
-  wrap.innerHTML = `<div style="font-size:.8rem;color:var(--muted);margin-bottom:10px">कुल प्रश्न: ${data.length}</div>` + data.map((q, i) => `
+  const wrap=document.getElementById('qmListWrap');
+  const {data,error}=await sb.from('questions').select('id,question,option_a,option_b,option_c,option_d,correct_option,difficulty,is_pyq').eq('micro_topic_id',qmFilters.mic).order('created_at',{ascending:false});
+  if(error){wrap.innerHTML=`<p class="empty-state">त्रुटि: ${error.message}</p>`;return;}
+  if(!data||data.length===0){wrap.innerHTML=`<div class="empty-state"><div class="em-ic">📭</div>कोई प्रश्न नहीं।</div>`;return;}
+  wrap.innerHTML=`<div style="font-size:.8rem;color:var(--muted);margin-bottom:10px">कुल: ${data.length}</div>`+data.map((q,i)=>`
   <div class="q-item" id="qitem-${q.id}">
-    <div class="q-item-meta">
-      <span class="q-badge">Q ${i+1}</span>
-      <span class="q-badge ${q.difficulty==='hard'?'hard':''}">${q.difficulty.toUpperCase()}</span>
-      ${q.is_pyq ? '<span class="q-badge pyq">PYQ</span>' : ''}
-    </div>
+    <div class="q-item-meta"><span class="q-badge">Q${i+1}</span><span class="q-badge ${q.difficulty==='hard'?'hard':''}">${q.difficulty.toUpperCase()}</span>${q.is_pyq?'<span class="q-badge pyq">PYQ</span>':''}</div>
     <div class="q-item-tx">${q.question}</div>
     <div class="q-opts">
       <div class="q-opt ${q.correct_option==='a'?'correct':''}">(A) ${q.option_a}</div>
@@ -834,461 +681,598 @@ async function loadQMList() {
       <div class="q-opt ${q.correct_option==='c'?'correct':''}">(C) ${q.option_c}</div>
       <div class="q-opt ${q.correct_option==='d'?'correct':''}">(D) ${q.option_d}</div>
     </div>
-    <button class="btn btn-danger" style="padding:6px 12px;font-size:.75rem;width:auto;margin-top:5px" onclick="deleteSingleQ('${q.id}')">🗑️ डिलीट करें</button>
+    <button class="btn btn-danger" style="padding:6px 12px;font-size:.75rem;width:auto;margin-top:5px" onclick="deleteSingleQ('${q.id}')">🗑️ डिलीट</button>
   </div>`).join('');
 }
 
 async function deleteSingleQ(id) {
-  if(!confirm('क्या आप सच में यह प्रश्न डिलीट करना चाहते हैं?')) return;
-  const { error } = await sb.from('questions').delete().eq('id', id);
-  if(error) showToast(error.message, 'err');
-  else { showToast('डिलीट हो गया', 'ok'); document.getElementById('qitem-'+id).remove(); }
+  if(!confirm('यह प्रश्न डिलीट करें?'))return;
+  const {error}=await sb.from('questions').delete().eq('id',id);
+  if(error) showToast(error.message,'err');
+  else { showToast('डिलीट हो गया','ok'); document.getElementById('qitem-'+id).remove(); }
 }
 
 async function loadQMFlagged() {
-  const wrap = document.getElementById('qmFlaggedWrap');
-  const { data, error } = await sb.from('flagged_questions').select('id, reason, status, created_at, questions(question)').order('created_at', {ascending: false});
-  if(error) { wrap.innerHTML = `<p class="empty-state">त्रुटि: ${error.message}</p>`; return; }
-  if(!data || data.length === 0) { wrap.innerHTML = `<div class="empty-state"><div class="em-ic">✅</div>कोई रिपोर्टेड प्रश्न नहीं है।</div>`; return; }
-
-  wrap.innerHTML = data.map(f => `
+  const wrap=document.getElementById('qmFlaggedWrap');
+  const {data,error}=await sb.from('flagged_questions').select('id,reason,status,created_at,questions(question)').order('created_at',{ascending:false});
+  if(error){wrap.innerHTML=`<p class="empty-state">त्रुटि: ${error.message}</p>`;return;}
+  if(!data||data.length===0){wrap.innerHTML=`<div class="empty-state"><div class="em-ic">✅</div>कोई रिपोर्ट नहीं।</div>`;return;}
+  wrap.innerHTML=data.map(f=>`
   <div class="q-item">
-    <div class="q-item-tx" style="font-size:.85rem;color:var(--muted)">प्रश्न: ${f.questions?.question || 'Deleted'}</div>
-    <div style="color:var(--red);font-weight:600;font-size:.85rem;margin-bottom:5px">🚩 रिपोर्ट: ${f.reason}</div>
+    <div class="q-item-tx" style="font-size:.85rem;color:var(--muted)">${f.questions?.question||'Deleted'}</div>
+    <div style="color:var(--red);font-weight:600;font-size:.85rem;margin-bottom:5px">🚩 ${f.reason}</div>
     <div class="q-item-meta">Status: <span class="q-badge">${f.status}</span></div>
   </div>`).join('');
 }
 
 // ══════════════════════════════════════════════
-// SECTION: QUIZ SETUP (Subject/Topic/Micro-topic → Mode → Count → Timer)
+// SECTION: QUIZ SETUP
 // ══════════════════════════════════════════════
-let qzSetup = {
-  level: 'subject',      // 'subject' | 'topic' | 'microtopic'
-  subId: '', topId: '', micId: '',
-  mode: 'practice',      // 'practice' | 'exam' | 'revision'
-  count: 10,
-  timerMin: 20
-};
-let qzDropdown = { subs: [], tops: [], mics: [] };
+let qzSetup={level:'subject',subId:'',topId:'',micId:'',mode:'practice',count:10,timerMin:20};
+let qzDropdown={subs:[],tops:[],mics:[]};
 
 async function goQuizSetup() {
-  renderSyllabusShell('लोड हो रहा है...');
-  const { data } = await sb.from('subjects').select('id, name').order('sort_order');
-  qzDropdown.subs = data || [];
-  qzDropdown.tops = []; qzDropdown.mics = [];
-  qzSetup = { level: 'subject', subId: '', topId: '', micId: '', mode: 'practice', count: 10, timerMin: 20 };
+  renderShell('लोड हो रहा है...');
+  const {data}=await sb.from('subjects').select('id,name').order('sort_order');
+  qzDropdown.subs=data||[]; qzDropdown.tops=[]; qzDropdown.mics=[];
+  qzSetup={level:'subject',subId:'',topId:'',micId:'',mode:'practice',count:10,timerMin:20};
   renderQuizSetup();
 }
 
-function setQzLevel(level) {
-  qzSetup.level = level;
-  if (level === 'subject') { qzSetup.topId = ''; qzSetup.micId = ''; }
-  if (level === 'topic') { qzSetup.micId = ''; }
-  renderQuizSetup();
-}
+function setQzLevel(level){qzSetup.level=level;if(level==='subject'){qzSetup.topId='';qzSetup.micId='';}if(level==='topic'){qzSetup.micId='';}renderQuizSetup();}
 
 async function qzPickSubject(subId) {
-  qzSetup.subId = subId; qzSetup.topId = ''; qzSetup.micId = '';
-  qzDropdown.tops = []; qzDropdown.mics = [];
-  if (subId && qzSetup.level !== 'subject') {
-    const { data } = await sb.from('topics').select('id, name').eq('subject_id', subId).order('sort_order');
-    qzDropdown.tops = data || [];
-  }
+  qzSetup.subId=subId; qzSetup.topId=''; qzSetup.micId='';
+  qzDropdown.tops=[]; qzDropdown.mics=[];
+  if(subId && qzSetup.level!=='subject'){const {data}=await sb.from('topics').select('id,name').eq('subject_id',subId).order('sort_order');qzDropdown.tops=data||[];}
   renderQuizSetup();
 }
 
 async function qzPickTopic(topId) {
-  qzSetup.topId = topId; qzSetup.micId = '';
-  qzDropdown.mics = [];
-  if (topId && qzSetup.level === 'microtopic') {
-    const { data } = await sb.from('micro_topics').select('id, name').eq('topic_id', topId).order('sort_order');
-    qzDropdown.mics = data || [];
-  }
+  qzSetup.topId=topId; qzSetup.micId=''; qzDropdown.mics=[];
+  if(topId && qzSetup.level==='microtopic'){const {data}=await sb.from('micro_topics').select('id,name').eq('topic_id',topId).order('sort_order');qzDropdown.mics=data||[];}
   renderQuizSetup();
 }
 
-function qzPickMicro(micId) {
-  qzSetup.micId = micId;
-  renderQuizSetup();
-}
-
-function setQzMode(mode) {
-  qzSetup.mode = mode;
-  renderQuizSetup();
-}
+function qzPickMicro(micId){qzSetup.micId=micId;renderQuizSetup();}
+function setQzMode(mode){qzSetup.mode=mode;renderQuizSetup();}
 
 function renderQuizSetup() {
-  const root = document.getElementById('appRoot');
-
-  const levelTabs = `
-  <div class="tabs">
-    <div class="tab ${qzSetup.level==='subject'?'active':''}" onclick="setQzLevel('subject')">📖 विषय (Subject)</div>
-    <div class="tab ${qzSetup.level==='topic'?'active':''}" onclick="setQzLevel('topic')">📑 टॉपिक (Topic)</div>
-    <div class="tab ${qzSetup.level==='microtopic'?'active':''}" onclick="setQzLevel('microtopic')">📄 माइक्रो-टॉपिक</div>
-  </div>`;
-
-  const selSub = `<div class="field"><label>विषय चुनें</label>
-    <select onchange="qzPickSubject(this.value)">
-      <option value="">-- विषय चुनें --</option>
-      ${qzDropdown.subs.map(s => `<option value="${s.id}" ${qzSetup.subId===s.id?'selected':''}>${s.name}</option>`).join('')}
-    </select></div>`;
-
-  const selTop = qzSetup.level !== 'subject' ? `<div class="field"><label>टॉपिक चुनें</label>
-    <select onchange="qzPickTopic(this.value)" ${!qzSetup.subId?'disabled':''}>
-      <option value="">-- टॉपिक चुनें --</option>
-      ${qzDropdown.tops.map(t => `<option value="${t.id}" ${qzSetup.topId===t.id?'selected':''}>${t.name}</option>`).join('')}
-    </select></div>` : '';
-
-  const selMic = qzSetup.level === 'microtopic' ? `<div class="field"><label>माइक्रो-टॉपिक चुनें</label>
-    <select onchange="qzPickMicro(this.value)" ${!qzSetup.topId?'disabled':''}>
-      <option value="">-- माइक्रो-टॉपिक चुनें --</option>
-      ${qzDropdown.mics.map(m => `<option value="${m.id}" ${qzSetup.micId===m.id?'selected':''}>${m.name}</option>`).join('')}
-    </select></div>` : '';
-
-  const readyToStart =
-    (qzSetup.level === 'subject' && qzSetup.subId) ||
-    (qzSetup.level === 'topic' && qzSetup.topId) ||
-    (qzSetup.level === 'microtopic' && qzSetup.micId);
-
-  const modeBlock = `
-  <div class="field"><label>मोड चुनें</label>
-  <div class="tabs">
+  const root=document.getElementById('appRoot');
+  const selSub=`<div class="field"><label>विषय चुनें</label><select onchange="qzPickSubject(this.value)"><option value="">-- विषय --</option>${qzDropdown.subs.map(s=>`<option value="${s.id}" ${qzSetup.subId===s.id?'selected':''}>${s.name}</option>`).join('')}</select></div>`;
+  const selTop=qzSetup.level!=='subject'?`<div class="field"><label>टॉपिक चुनें</label><select onchange="qzPickTopic(this.value)" ${!qzSetup.subId?'disabled':''}><option value="">-- टॉपिक --</option>${qzDropdown.tops.map(t=>`<option value="${t.id}" ${qzSetup.topId===t.id?'selected':''}>${t.name}</option>`).join('')}</select></div>`:'';
+  const selMic=qzSetup.level==='microtopic'?`<div class="field"><label>माइक्रो-टॉपिक चुनें</label><select onchange="qzPickMicro(this.value)" ${!qzSetup.topId?'disabled':''}><option value="">-- माइक्रो-टॉपिक --</option>${qzDropdown.mics.map(m=>`<option value="${m.id}" ${qzSetup.micId===m.id?'selected':''}>${m.name}</option>`).join('')}</select></div>`:'';
+  const ready=(qzSetup.level==='subject'&&qzSetup.subId)||(qzSetup.level==='topic'&&qzSetup.topId)||(qzSetup.level==='microtopic'&&qzSetup.micId);
+  const modeBlock=`<div class="field"><label>मोड चुनें</label><div class="tabs">
     <div class="tab ${qzSetup.mode==='practice'?'active':''}" onclick="setQzMode('practice')">✍️ Practice</div>
     <div class="tab ${qzSetup.mode==='exam'?'active':''}" onclick="setQzMode('exam')">⏱️ Exam</div>
     <div class="tab ${qzSetup.mode==='revision'?'active':''}" onclick="setQzMode('revision')">🔁 Revision</div>
-  </div>
-  <div style="font-size:.78rem;color:var(--muted);margin-top:-6px;margin-bottom:10px">
-    ${qzSetup.mode==='practice' ? 'हर सवाल के बाद तुरंत सही/गलत पता चलेगा।' : ''}
-    ${qzSetup.mode==='exam' ? 'टाइमर चलेगा, अंत में पूरा result दिखेगा।' : ''}
-    ${qzSetup.mode==='revision' ? 'सामान्य अभ्यास जैसा (पूरा spaced-repetition logic आगे की session में आएगा)।' : ''}
   </div></div>`;
-
-  const countBlock = `<div class="field"><label>कितने सवाल चाहिए?</label>
-  <select id="qzCount">
-    ${[5,10,15,20,25,30,50].map(n => `<option value="${n}" ${qzSetup.count===n?'selected':''}>${n} सवाल</option>`).join('')}
-  </select></div>`;
-
-  const timerBlock = qzSetup.mode === 'exam' ? `<div class="field"><label>समय सीमा (Timer)</label>
-  <select id="qzTimer">
-    <option value="10">10 मिनट</option>
-    <option value="20" selected>20 मिनट</option>
-    <option value="30">30 मिनट</option>
-    <option value="45">45 मिनट</option>
-    <option value="60">60 मिनट</option>
-    <option value="0">कोई समय-सीमा नहीं</option>
-  </select></div>` : '';
-
-  root.innerHTML = `
+  const countBlock=`<div class="field"><label>कितने सवाल?</label><select id="qzCount">${[5,10,15,20,25,30,50].map(n=>`<option value="${n}" ${qzSetup.count===n?'selected':''}>${n} सवाल</option>`).join('')}</select></div>`;
+  const timerBlock=qzSetup.mode==='exam'?`<div class="field"><label>Timer</label><select id="qzTimer"><option value="10">10 मिनट</option><option value="20" selected>20 मिनट</option><option value="30">30 मिनट</option><option value="45">45 मिनट</option><option value="60">60 मिनट</option><option value="0">कोई सीमा नहीं</option></select></div>`:'';
+  root.innerHTML=`
   <div class="card" style="max-width:600px;margin:0 auto">
-    <div class="crumb"><span onclick="renderHome()">🏠 होम</span> › <span class="cur">क्विज़ शुरू करें</span></div>
+    <div class="crumb"><span onclick="renderHome()">🏠 होम</span> › <span class="cur">क्विज़ सेटअप</span></div>
     <div class="ctitle">🎯 क्विज़ सेटअप</div>
-    ${levelTabs}
-    ${selSub}
-    ${selTop}
-    ${selMic}
-    ${readyToStart ? modeBlock + countBlock + timerBlock : `<div class="empty-state"><div class="em-ic">👆</div>ऊपर से चुनकर आगे बढ़ें।</div>`}
-    ${readyToStart ? `<button class="btn btn-primary" onclick="startQuiz()">क्विज़ शुरू करें ▶️</button>` : ''}
+    <div class="tabs">
+      <div class="tab ${qzSetup.level==='subject'?'active':''}" onclick="setQzLevel('subject')">📖 Subject</div>
+      <div class="tab ${qzSetup.level==='topic'?'active':''}" onclick="setQzLevel('topic')">📑 Topic</div>
+      <div class="tab ${qzSetup.level==='microtopic'?'active':''}" onclick="setQzLevel('microtopic')">📄 Micro-topic</div>
+    </div>
+    ${selSub}${selTop}${selMic}
+    ${ready?modeBlock+countBlock+timerBlock:`<div class="empty-state"><div class="em-ic">👆</div>ऊपर से चुनकर आगे बढ़ें।</div>`}
+    ${ready?`<button class="btn btn-primary" onclick="startQuiz()">क्विज़ शुरू करें ▶️</button>`:''}
   </div>`;
 }
 
 // ══════════════════════════════════════════════
-// SECTION: QUIZ ENGINE (in-progress quiz state + rendering)
+// SECTION: QUIZ ENGINE — Session 5: Bookmark बटन जोड़ा
 // ══════════════════════════════════════════════
-let qzState = null; // built fresh each time startQuiz() runs
+let qzState=null;
+let qzBookmarks=new Set(); // current session bookmarks (question ids)
 
-function fisherYatesShuffle(arr) {
-  const a = arr.slice();
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
+function fisherYatesShuffle(arr){const a=arr.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
 
 async function startQuiz() {
-  const countSel = document.getElementById('qzCount');
-  const timerSel = document.getElementById('qzTimer');
-  qzSetup.count = countSel ? parseInt(countSel.value, 10) : 10;
-  qzSetup.timerMin = timerSel ? parseInt(timerSel.value, 10) : 0;
-
-  renderSyllabusShell('सवाल लाए जा रहे हैं...');
-
-  // Build question query based on chosen level — joins through micro_topics→topics so
-  // subject/topic level filters work without needing a denormalized subject_id on questions.
-  let micIds = [];
-  if (qzSetup.level === 'microtopic') {
-    micIds = [qzSetup.micId];
-  } else if (qzSetup.level === 'topic') {
-    const { data, error } = await sb.from('micro_topics').select('id').eq('topic_id', qzSetup.topId);
-    if (error) { showToast('सवाल लाने में दिक्कत: ' + error.message, 'err'); goQuizSetup(); return; }
-    micIds = (data || []).map(m => m.id);
+  const countSel=document.getElementById('qzCount'),timerSel=document.getElementById('qzTimer');
+  qzSetup.count=countSel?parseInt(countSel.value,10):10;
+  qzSetup.timerMin=timerSel?parseInt(timerSel.value,10):0;
+  renderShell('सवाल लाए जा रहे हैं...');
+  let micIds=[];
+  if(qzSetup.level==='microtopic'){micIds=[qzSetup.micId];}
+  else if(qzSetup.level==='topic'){
+    const {data,error}=await sb.from('micro_topics').select('id').eq('topic_id',qzSetup.topId);
+    if(error){showToast('दिक्कत: '+error.message,'err');goQuizSetup();return;}
+    micIds=(data||[]).map(m=>m.id);
   } else {
-    const { data: tops, error: topErr } = await sb.from('topics').select('id').eq('subject_id', qzSetup.subId);
-    if (topErr) { showToast('सवाल लाने में दिक्कत: ' + topErr.message, 'err'); goQuizSetup(); return; }
-    const topIds = (tops || []).map(t => t.id);
-    if (topIds.length) {
-      const { data: mics, error: micErr } = await sb.from('micro_topics').select('id').in('topic_id', topIds);
-      if (micErr) { showToast('सवाल लाने में दिक्कत: ' + micErr.message, 'err'); goQuizSetup(); return; }
-      micIds = (mics || []).map(m => m.id);
-    }
+    const {data:tops,error:topErr}=await sb.from('topics').select('id').eq('subject_id',qzSetup.subId);
+    if(topErr){showToast('दिक्कत: '+topErr.message,'err');goQuizSetup();return;}
+    const topIds=(tops||[]).map(t=>t.id);
+    if(topIds.length){const {data:mics,error:micErr}=await sb.from('micro_topics').select('id').in('topic_id',topIds);if(micErr){showToast('दिक्कत: '+micErr.message,'err');goQuizSetup();return;}micIds=(mics||[]).map(m=>m.id);}
   }
-
-  if (!micIds.length) {
-    showToast('इस चुनाव में कोई Micro-topic नहीं मिला, इसलिए सवाल नहीं हैं', 'err');
-    goQuizSetup();
-    return;
-  }
-
-  const { data: qData, error: qErr } = await sb.from('questions').select('*').in('micro_topic_id', micIds);
-  if (qErr) { showToast('सवाल लाने में दिक्कत: ' + qErr.message, 'err'); goQuizSetup(); return; }
-
-  if (!qData || qData.length === 0) {
-    showToast('इस चुनाव में अभी कोई सवाल उपलब्ध नहीं है', 'err');
-    goQuizSetup();
-    return;
-  }
-
-  const shuffled = fisherYatesShuffle(qData);
-  const picked = shuffled.slice(0, qzSetup.count);
-  if (picked.length < qzSetup.count) {
-    showToast(`सिर्फ ${picked.length} सवाल उपलब्ध थे, उतने ही दिए जा रहे हैं`, 'ok');
-  }
-
-  qzState = {
-    questions: picked,
-    idx: 0,
-    answers: new Array(picked.length).fill(null), // {selected, correct, isCorrect} or null=skipped
-    mode: qzSetup.mode,
-    level: qzSetup.level,
-    subId: qzSetup.subId, topId: qzSetup.topId, micId: qzSetup.micId,
-    startedAt: Date.now(),
-    timerMin: qzSetup.timerMin,
-    timerInterval: null,
-    secondsLeft: qzSetup.timerMin > 0 ? qzSetup.timerMin * 60 : null,
-    locked: false // true after answering current question in practice mode, until "next"
-  };
-
-  if (qzState.mode === 'exam' && qzState.secondsLeft !== null) {
-    qzState.timerInterval = setInterval(qzTimerTick, 1000);
-  }
-
+  if(!micIds.length){showToast('कोई Micro-topic नहीं मिला','err');goQuizSetup();return;}
+  const {data:qData,error:qErr}=await sb.from('questions').select('*').in('micro_topic_id',micIds);
+  if(qErr){showToast('सवाल लाने में दिक्कत: '+qErr.message,'err');goQuizSetup();return;}
+  if(!qData||qData.length===0){showToast('अभी कोई सवाल उपलब्ध नहीं','err');goQuizSetup();return;}
+  const shuffled=fisherYatesShuffle(qData);
+  const picked=shuffled.slice(0,qzSetup.count);
+  if(picked.length<qzSetup.count) showToast(`सिर्फ ${picked.length} सवाल उपलब्ध थे`,'ok');
+  qzState={questions:picked,idx:0,answers:new Array(picked.length).fill(null),mode:qzSetup.mode,
+    startedAt:Date.now(),timerMin:qzSetup.timerMin,timerInterval:null,
+    secondsLeft:qzSetup.timerMin>0?qzSetup.timerMin*60:null,locked:false};
+  qzBookmarks=new Set();
+  // Load existing bookmarks for these question IDs
+  const qIds=picked.map(q=>q.id);
+  const {data:bms}=await sb.from('bookmarks').select('question_id').eq('user_id',currentUser.id).in('question_id',qIds);
+  if(bms) bms.forEach(b=>qzBookmarks.add(b.question_id));
+  if(qzState.mode==='exam'&&qzState.secondsLeft!==null) qzState.timerInterval=setInterval(qzTimerTick,1000);
   renderQuizQuestion();
 }
 
-function qzTimerTick() {
-  if (!qzState) return;
-  qzState.secondsLeft--;
-  const el = document.getElementById('qzTimerDisplay');
-  if (el) el.textContent = qzFormatTime(qzState.secondsLeft);
-  if (qzState.secondsLeft <= 0) {
-    clearInterval(qzState.timerInterval);
-    showToast('समय समाप्त! क्विज़ जमा की जा रही है...', 'err');
-    finishQuiz();
-  }
-}
-
-function qzFormatTime(totalSeconds) {
-  const m = Math.floor(totalSeconds / 60);
-  const s = totalSeconds % 60;
-  return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
-}
+function qzTimerTick(){if(!qzState)return;qzState.secondsLeft--;const el=document.getElementById('qzTimerDisplay');if(el)el.textContent=qzFormatTime(qzState.secondsLeft);if(qzState.secondsLeft<=0){clearInterval(qzState.timerInterval);showToast('समय समाप्त!','err');finishQuiz();}}
+function qzFormatTime(s){return `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;}
 
 function renderQuizQuestion() {
-  const root = document.getElementById('appRoot');
-  const st = qzState;
-  const q = st.questions[st.idx];
-  const answered = st.answers[st.idx];
-  const isPractice = st.mode === 'practice' || st.mode === 'revision';
+  const root=document.getElementById('appRoot');
+  const st=qzState, q=st.questions[st.idx], answered=st.answers[st.idx];
+  const isPractice=st.mode==='practice'||st.mode==='revision';
+  const isBookmarked=qzBookmarks.has(q.id);
 
-  const opts = ['a','b','c','d'];
-  const optsHtml = opts.map(letter => {
-    const text = q['option_' + letter];
-    let cls = 'q-opt';
-    let clickable = true;
-    if (answered) {
-      clickable = false;
-      if (letter === q.correct_option) cls += ' correct';
-      else if (letter === answered.selected) cls += ' wrong-pick';
-    }
-    return `<div class="${cls}" style="cursor:${clickable?'pointer':'default'};margin-bottom:8px;padding:12px;${answered && letter===answered.selected && letter!==q.correct_option ? 'border-color:var(--red);background:#fff3f3' : ''}" ${clickable ? `onclick="qzSelectOption('${letter}')"` : ''}>
-      <strong>(${letter.toUpperCase()})</strong> ${text}
-    </div>`;
+  const optsHtml=['a','b','c','d'].map(letter=>{
+    const text=q['option_'+letter];
+    let cls='q-opt', clickable=true;
+    if(answered){clickable=false;if(letter===q.correct_option)cls+=' correct';else if(letter===answered.selected)cls+=' wrong-pick';}
+    return `<div class="${cls}" style="cursor:${clickable?'pointer':'default'};margin-bottom:8px;padding:12px;${answered&&letter===answered.selected&&letter!==q.correct_option?'border-color:var(--red);background:#fff3f3':''}" ${clickable?`onclick="qzSelectOption('${letter}')"`:''}>
+      <strong>(${letter.toUpperCase()})</strong> ${text}</div>`;
   }).join('');
 
-  const progressTxt = `सवाल ${st.idx + 1} / ${st.questions.length}`;
-  const timerHtml = (st.mode === 'exam' && st.secondsLeft !== null)
-    ? `<div style="font-weight:700;color:var(--red);font-size:.95rem" id="qzTimerDisplay">${qzFormatTime(st.secondsLeft)}</div>`
-    : (st.mode === 'exam' ? `<div style="font-size:.8rem;color:var(--muted)">कोई समय-सीमा नहीं</div>` : '');
+  const timerHtml=(st.mode==='exam'&&st.secondsLeft!==null)?`<div style="font-weight:700;color:var(--red);font-size:.95rem" id="qzTimerDisplay">${qzFormatTime(st.secondsLeft)}</div>`:(st.mode==='exam'?`<div style="font-size:.8rem;color:var(--muted)">कोई सीमा नहीं</div>`:'');
+  const expHtml=(isPractice&&answered&&q.explanation)?`<div style="background:#f7f8fc;border:1px solid #e8eaf5;border-radius:10px;padding:12px;margin-top:10px;font-size:.83rem">💡 <strong>व्याख्या:</strong> ${q.explanation}</div>`:'';
+  const isLast=st.idx===st.questions.length-1;
 
-  const explanationHtml = (isPractice && answered && q.explanation) ? `
-    <div style="background:#f7f8fc;border:1px solid #e8eaf5;border-radius:10px;padding:12px;margin-top:10px;font-size:.83rem;color:var(--text)">
-      💡 <strong>व्याख्या:</strong> ${q.explanation}
-    </div>` : '';
+  // Bookmark button
+  const bmBtn=`<button onclick="toggleQuizBookmark('${q.id}')" id="bmBtn-${q.id}" style="background:none;border:none;cursor:pointer;font-size:1.4rem;padding:4px;width:auto" title="Bookmark">${isBookmarked?'⭐':'☆'}</button>`;
 
-  const isLast = st.idx === st.questions.length - 1;
-  const nextLabel = isLast ? 'क्विज़ समाप्त करें ✅' : 'आगे ▶️';
-
-  let actionHtml = '';
-  if (isPractice) {
-    actionHtml = answered
-      ? `<button class="btn btn-primary" onclick="qzGoNext()">${nextLabel}</button>`
-      : `<button class="btn btn-secondary" onclick="qzSkip()">यह सवाल छोड़ें</button>`;
+  let actionHtml='';
+  if(isPractice){
+    actionHtml=answered?`<button class="btn btn-primary" onclick="qzGoNext()">${isLast?'क्विज़ समाप्त ✅':'आगे ▶️'}</button>`:`<button class="btn btn-secondary" onclick="qzSkip()">सवाल छोड़ें</button>`;
   } else {
-    // exam mode: selecting an option auto-advances is not done — user can change answer freely until Next
-    actionHtml = `
-      <div style="display:flex;gap:10px">
-        <button class="btn btn-secondary" onclick="qzSkip()">छोड़ें</button>
-        <button class="btn btn-primary" onclick="qzGoNext()" ${!answered?'disabled':''}>${nextLabel}</button>
-      </div>`;
+    actionHtml=`<div style="display:flex;gap:10px"><button class="btn btn-secondary" onclick="qzSkip()">छोड़ें</button><button class="btn btn-primary" onclick="qzGoNext()" ${!answered?'disabled':''}>${isLast?'समाप्त ✅':'आगे ▶️'}</button></div>`;
   }
 
-  root.innerHTML = `
+  root.innerHTML=`
   <div class="card" style="max-width:600px;margin:0 auto">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-      <div style="font-size:.8rem;color:var(--muted);font-weight:600">${progressTxt}</div>
-      ${timerHtml}
+      <div style="font-size:.8rem;color:var(--muted);font-weight:600">सवाल ${st.idx+1} / ${st.questions.length}</div>
+      <div style="display:flex;align-items:center;gap:8px">${timerHtml}${bmBtn}</div>
     </div>
-    <div class="q-item-meta">
-      <span class="q-badge ${q.difficulty==='hard'?'hard':''}">${(q.difficulty||'medium').toUpperCase()}</span>
-      ${q.is_pyq ? '<span class="q-badge pyq">PYQ</span>' : ''}
-    </div>
+    <div class="q-item-meta"><span class="q-badge ${q.difficulty==='hard'?'hard':''}">${(q.difficulty||'medium').toUpperCase()}</span>${q.is_pyq?'<span class="q-badge pyq">PYQ</span>':''}</div>
     <div class="q-item-tx" style="font-size:1rem;margin:10px 0 16px">${q.question}</div>
-    ${optsHtml}
-    ${explanationHtml}
+    ${optsHtml}${expHtml}
     <div style="margin-top:16px">${actionHtml}</div>
   </div>`;
 }
 
+async function toggleQuizBookmark(qId) {
+  const isBookmarked=qzBookmarks.has(qId);
+  if(isBookmarked) {
+    qzBookmarks.delete(qId);
+    await sb.from('bookmarks').delete().eq('user_id',currentUser.id).eq('question_id',qId);
+    showToast('Bookmark हटाया','ok');
+  } else {
+    qzBookmarks.add(qId);
+    await sb.from('bookmarks').upsert({user_id:currentUser.id,question_id:qId},{onConflict:'user_id,question_id'});
+    showToast('⭐ Bookmark हो गया','ok');
+  }
+  const btn=document.getElementById('bmBtn-'+qId);
+  if(btn) btn.textContent=qzBookmarks.has(qId)?'⭐':'☆';
+}
+
 function qzSelectOption(letter) {
-  const st = qzState;
-  if (st.answers[st.idx]) return; // already answered, ignore further clicks
-  const q = st.questions[st.idx];
-  st.answers[st.idx] = { selected: letter, correct: q.correct_option, isCorrect: letter === q.correct_option, skipped: false };
+  const st=qzState;if(st.answers[st.idx])return;
+  const q=st.questions[st.idx];
+  st.answers[st.idx]={selected:letter,correct:q.correct_option,isCorrect:letter===q.correct_option,skipped:false};
   renderQuizQuestion();
 }
 
 function qzSkip() {
-  const st = qzState;
-  if (!st.answers[st.idx]) {
-    st.answers[st.idx] = { selected: null, correct: st.questions[st.idx].correct_option, isCorrect: false, skipped: true };
-  }
+  const st=qzState;
+  if(!st.answers[st.idx]) st.answers[st.idx]={selected:null,correct:st.questions[st.idx].correct_option,isCorrect:false,skipped:true};
   qzGoNext();
 }
 
 function qzGoNext() {
-  const st = qzState;
-  if (st.idx < st.questions.length - 1) {
-    st.idx++;
-    renderQuizQuestion();
-  } else {
-    finishQuiz();
-  }
+  const st=qzState;
+  if(st.idx<st.questions.length-1){st.idx++;renderQuizQuestion();}
+  else finishQuiz();
 }
 
 // ══════════════════════════════════════════════
-// SECTION: QUIZ RESULT (scoring, saving to sessions/session_answers, review)
+// SECTION: QUIZ RESULT — Session 5: Daily Target update भी होगा
 // ══════════════════════════════════════════════
 async function finishQuiz() {
-  const st = qzState;
-  if (st.timerInterval) clearInterval(st.timerInterval);
-
-  const timeTakenSec = Math.round((Date.now() - st.startedAt) / 1000);
-  let correct = 0, incorrect = 0, skipped = 0;
-  st.answers.forEach(a => {
-    if (!a || a.skipped) skipped++;
-    else if (a.isCorrect) correct++;
-    else incorrect++;
-  });
-
-  renderSyllabusShell('Result सेव हो रहा है...');
-
+  const st=qzState;
+  if(st.timerInterval) clearInterval(st.timerInterval);
+  const timeTakenSec=Math.round((Date.now()-st.startedAt)/1000);
+  let correct=0,incorrect=0,skipped=0;
+  st.answers.forEach(a=>{if(!a||a.skipped)skipped++;else if(a.isCorrect)correct++;else incorrect++;});
+  renderShell('Result सेव हो रहा है...');
+  let sessionId=null;
   try {
-    const { data: sessionRow, error: sessErr } = await sb.from('sessions').insert({
-      user_id: currentUser.id,
-      mode: st.mode,
-      total: st.questions.length,
-      correct, incorrect, skipped,
-      time_taken: timeTakenSec
-    }).select().single();
-
-    if (sessErr) throw sessErr;
-
-    const answerRows = st.questions.map((q, i) => {
-      const a = st.answers[i] || { selected: null, isCorrect: false, skipped: true };
-      return {
-        session_id: sessionRow.id,
-        question_id: q.id,
-        selected_option: a.selected,
-        is_correct: a.isCorrect,
-        is_skipped: !!a.skipped
-      };
-    });
-
-    const { error: ansErr } = await sb.from('session_answers').insert(answerRows);
-    if (ansErr) throw ansErr;
-  } catch (e) {
-    showToast('Result सेव करने में दिक्कत: ' + e.message, 'err');
-    // Still show the result screen even if save failed — user shouldn't lose their attempt view.
+    const {data:sessionRow,error:sessErr}=await sb.from('sessions').insert({user_id:currentUser.id,mode:st.mode,total:st.questions.length,correct,incorrect,skipped,time_taken:timeTakenSec}).select().single();
+    if(sessErr) throw sessErr;
+    sessionId=sessionRow.id;
+    const answerRows=st.questions.map((q,i)=>{const a=st.answers[i]||{selected:null,isCorrect:false,skipped:true};return{session_id:sessionId,question_id:q.id,selected_option:a.selected,is_correct:a.isCorrect,is_skipped:!!a.skipped};});
+    const {error:ansErr}=await sb.from('session_answers').insert(answerRows);
+    if(ansErr) throw ansErr;
+    // Session 5: Update spaced_repetition for wrong answers
+    await updateSpacedRepetition(st.questions,st.answers);
+    // Session 5: Update daily target
+    await updateDailyTarget(st.questions.length);
+    // Session 5: Update streak
+    await updateStreak();
+  } catch(e){
+    showToast('Result सेव में दिक्कत: '+e.message,'err');
   }
+  renderQuizResult({correct,incorrect,skipped,timeTakenSec,questions:st.questions,answers:st.answers});
+  qzState=null;
+}
 
-  renderQuizResult({ correct, incorrect, skipped, timeTakenSec, questions: st.questions, answers: st.answers });
-  qzState = null;
+// Session 5: Spaced Repetition update
+async function updateSpacedRepetition(questions,answers) {
+  const today=new Date().toISOString().split('T')[0];
+  for(let i=0;i<questions.length;i++){
+    const q=questions[i], a=answers[i];
+    if(!a||a.skipped) continue;
+    // Fetch existing record
+    const {data:existing}=await sb.from('spaced_repetition').select('*').eq('user_id',currentUser.id).eq('question_id',q.id).single().catch(()=>({data:null}));
+    if(a.isCorrect){
+      // Correct: increase interval (1→3→7→14→30)
+      const intervals=[1,3,7,14,30];
+      const curInterval=(existing?.interval_days)||0;
+      const nextIdx=Math.min(intervals.findIndex(x=>x>curInterval),intervals.length-1);
+      const newInterval=intervals[nextIdx<0?intervals.length-1:nextIdx];
+      const nextDate=new Date(Date.now()+newInterval*86400000).toISOString().split('T')[0];
+      await sb.from('spaced_repetition').upsert({user_id:currentUser.id,question_id:q.id,interval_days:newInterval,next_review_date:nextDate},{onConflict:'user_id,question_id'});
+    } else {
+      // Wrong: reset to interval 1, review tomorrow
+      const nextDate=new Date(Date.now()+86400000).toISOString().split('T')[0];
+      await sb.from('spaced_repetition').upsert({user_id:currentUser.id,question_id:q.id,interval_days:1,next_review_date:nextDate},{onConflict:'user_id,question_id'});
+    }
+  }
+}
+
+// Session 5: Daily Target update
+async function updateDailyTarget(questionsAttempted) {
+  const today=new Date().toISOString().split('T')[0];
+  const {data:existing}=await sb.from('daily_goals').select('*').eq('user_id',currentUser.id).eq('date',today).single().catch(()=>({data:null}));
+  if(existing){
+    await sb.from('daily_goals').update({achieved_count:existing.achieved_count+questionsAttempted}).eq('id',existing.id);
+  } else {
+    await sb.from('daily_goals').insert({user_id:currentUser.id,date:today,goal_count:10,achieved_count:questionsAttempted});
+  }
+}
+
+// Session 5: Streak update
+async function updateStreak() {
+  const today=new Date().toISOString().split('T')[0];
+  const yesterday=new Date(Date.now()-86400000).toISOString().split('T')[0];
+  const {data:existing}=await sb.from('streaks').select('*').eq('user_id',currentUser.id).single().catch(()=>({data:null}));
+  if(!existing){
+    await sb.from('streaks').insert({user_id:currentUser.id,current_streak:1,longest_streak:1,last_study_date:today});
+    return;
+  }
+  if(existing.last_study_date===today) return; // already updated today
+  const newCurrent=existing.last_study_date===yesterday?existing.current_streak+1:1;
+  const newLongest=Math.max(newCurrent,existing.longest_streak);
+  await sb.from('streaks').update({current_streak:newCurrent,longest_streak:newLongest,last_study_date:today}).eq('user_id',currentUser.id);
 }
 
 function renderQuizResult(r) {
-  const root = document.getElementById('appRoot');
-  const total = r.questions.length;
-  const pct = total ? Math.round((r.correct / total) * 100) : 0;
-  const mins = Math.floor(r.timeTakenSec / 60);
-  const secs = r.timeTakenSec % 60;
-
-  const wrongReview = r.questions.map((q, i) => ({ q, a: r.answers[i] }))
-    .filter(x => x.a && !x.a.isCorrect && !x.a.skipped)
-    .map(x => `
-      <div class="q-item">
-        <div class="q-item-tx">${x.q.question}</div>
-        <div class="q-opts">
-          ${['a','b','c','d'].map(letter => `
-            <div class="q-opt ${letter===x.q.correct_option?'correct':''}" style="${letter===x.a.selected && letter!==x.q.correct_option?'border-color:var(--red);background:#fff3f3':''}">
-              (${letter.toUpperCase()}) ${x.q['option_'+letter]}
-            </div>`).join('')}
-        </div>
-        ${x.q.explanation ? `<div style="font-size:.82rem;color:var(--text);margin-top:6px">💡 ${x.q.explanation}</div>` : ''}
-      </div>`).join('');
-
-  const skippedReview = r.questions.map((q, i) => ({ q, a: r.answers[i] }))
-    .filter(x => !x.a || x.a.skipped)
-    .map(x => `
-      <div class="q-item">
-        <div class="q-item-tx">${x.q.question}</div>
-        <div class="q-opts">
-          ${['a','b','c','d'].map(letter => `
-            <div class="q-opt ${letter===x.q.correct_option?'correct':''}">(${letter.toUpperCase()}) ${x.q['option_'+letter]}</div>`).join('')}
-        </div>
-        ${x.q.explanation ? `<div style="font-size:.82rem;color:var(--text);margin-top:6px">💡 ${x.q.explanation}</div>` : ''}
-      </div>`).join('');
-
-  root.innerHTML = `
+  const root=document.getElementById('appRoot');
+  const total=r.questions.length, pct=total?Math.round((r.correct/total)*100):0;
+  const mins=Math.floor(r.timeTakenSec/60), secs=r.timeTakenSec%60;
+  const wrongReview=r.questions.map((q,i)=>({q,a:r.answers[i]})).filter(x=>x.a&&!x.a.isCorrect&&!x.a.skipped).map(x=>`
+    <div class="q-item"><div class="q-item-tx">${x.q.question}</div>
+    <div class="q-opts">${['a','b','c','d'].map(l=>`<div class="q-opt ${l===x.q.correct_option?'correct':''}" style="${l===x.a.selected&&l!==x.q.correct_option?'border-color:var(--red);background:#fff3f3':''}">(${l.toUpperCase()}) ${x.q['option_'+l]}</div>`).join('')}</div>
+    ${x.q.explanation?`<div style="font-size:.82rem;color:var(--text);margin-top:6px">💡 ${x.q.explanation}</div>`:''}</div>`).join('');
+  const skippedReview=r.questions.map((q,i)=>({q,a:r.answers[i]})).filter(x=>!x.a||x.a.skipped).map(x=>`
+    <div class="q-item"><div class="q-item-tx">${x.q.question}</div>
+    <div class="q-opts">${['a','b','c','d'].map(l=>`<div class="q-opt ${l===x.q.correct_option?'correct':''}">(${l.toUpperCase()}) ${x.q['option_'+l]}</div>`).join('')}</div></div>`).join('');
+  root.innerHTML=`
   <div class="card" style="max-width:600px;margin:0 auto;text-align:center">
     <div class="ctitle" style="border-left:none;padding-left:0;justify-content:center">🏁 क्विज़ पूरी हुई!</div>
     <div style="font-size:2.4rem;font-weight:800;color:var(--saffron);margin:6px 0">${pct}%</div>
-    <div style="font-size:.85rem;color:var(--muted);margin-bottom:18px">समय: ${mins} मिनट ${secs} सेकंड</div>
+    <div style="font-size:.85rem;color:var(--muted);margin-bottom:18px">समय: ${mins}म ${secs}से</div>
     <div class="dgrid" style="grid-template-columns:repeat(4,1fr)">
       <div class="dcard" style="cursor:default;background:linear-gradient(135deg,var(--navy),var(--light-navy))"><div class="nm">${total}</div><div class="lb">कुल</div></div>
       <div class="dcard" style="cursor:default;background:linear-gradient(135deg,#1b5e20,#2e7d32)"><div class="nm">${r.correct}</div><div class="lb">सही</div></div>
       <div class="dcard" style="cursor:default;background:linear-gradient(135deg,#b71c1c,#c62828)"><div class="nm">${r.incorrect}</div><div class="lb">गलत</div></div>
-      <div class="dcard" style="cursor:default;background:linear-gradient(135deg,#555,#777)"><div class="nm">${r.skipped}</div><div class="lb">छोड़े गए</div></div>
+      <div class="dcard" style="cursor:default;background:linear-gradient(135deg,#555,#777)"><div class="nm">${r.skipped}</div><div class="lb">छोड़े</div></div>
     </div>
   </div>
-
-  ${wrongReview ? `<div class="card"><div class="ctitle">❌ गलत सवालों की समीक्षा</div>${wrongReview}</div>` : ''}
-  ${skippedReview ? `<div class="card"><div class="ctitle">⏭️ छोड़े गए सवाल</div>${skippedReview}</div>` : ''}
-
+  ${wrongReview?`<div class="card"><div class="ctitle">❌ गलत सवालों की समीक्षा</div>${wrongReview}</div>`:''}
+  ${skippedReview?`<div class="card"><div class="ctitle">⏭️ छोड़े गए सवाल</div>${skippedReview}</div>`:''}
   <div class="card" style="max-width:600px;margin:0 auto">
     <button class="btn btn-primary" onclick="goQuizSetup()">🔁 फिर से क्विज़ खेलें</button>
     <div style="height:8px"></div>
     <button class="btn btn-secondary" onclick="renderHome()">🏠 होम पर जाएं</button>
   </div>`;
+}
+
+// ══════════════════════════════════════════════
+// SECTION: BOOKMARKS — Session 5 (New)
+// ══════════════════════════════════════════════
+async function goBookmarks() {
+  renderShell('Bookmarks लोड हो रहे हैं...');
+  const {data,error}=await sb.from('bookmarks').select('question_id, questions(id,question,option_a,option_b,option_c,option_d,correct_option,difficulty,is_pyq,explanation)').eq('user_id',currentUser.id).order('created_at',{ascending:false});
+  const root=document.getElementById('appRoot');
+  if(error){root.innerHTML=`<div class="card"><div class="crumb"><span onclick="renderHome()">🏠 होम</span> › <span class="cur">Bookmarks</span></div><p>त्रुटि: ${error.message}</p></div>`;return;}
+  const items=(data||[]).filter(b=>b.questions);
+  if(!items.length){
+    root.innerHTML=`<div class="card"><div class="crumb"><span onclick="renderHome()">🏠 होम</span> › <span class="cur">Bookmarks</span></div><div class="ctitle">⭐ Bookmarks</div><div class="empty-state"><div class="em-ic">⭐</div>अभी कोई Bookmark नहीं है।<br>Quiz खेलते समय ☆ बटन से save करें।</div></div>`;
+    return;
+  }
+  const qHtml=items.map(b=>{const q=b.questions;return `
+  <div class="q-item">
+    <div class="q-item-meta">
+      <span class="q-badge ${q.difficulty==='hard'?'hard':''}">${(q.difficulty||'medium').toUpperCase()}</span>
+      ${q.is_pyq?'<span class="q-badge pyq">PYQ</span>':''}
+    </div>
+    <div class="q-item-tx">${q.question}</div>
+    <div class="q-opts">${['a','b','c','d'].map(l=>`<div class="q-opt ${l===q.correct_option?'correct':''}">(${l.toUpperCase()}) ${q['option_'+l]}</div>`).join('')}</div>
+    ${q.explanation?`<div style="font-size:.82rem;color:var(--text);margin-top:6px">💡 ${q.explanation}</div>`:''}
+    <button class="btn btn-danger" style="padding:5px 12px;font-size:.75rem;width:auto;margin-top:8px" onclick="removeBookmark('${q.id}',this)">🗑️ Bookmark हटाएं</button>
+  </div>`;}).join('');
+  root.innerHTML=`<div class="card"><div class="crumb"><span onclick="renderHome()">🏠 होम</span> › <span class="cur">Bookmarks</span></div>
+    <div class="ctitle">⭐ Bookmarks (${items.length})</div>${qHtml}</div>`;
+}
+
+async function removeBookmark(qId,btn) {
+  btn.disabled=true;
+  const {error}=await sb.from('bookmarks').delete().eq('user_id',currentUser.id).eq('question_id',qId);
+  if(error){showToast('हटाने में दिक्कत','err');btn.disabled=false;return;}
+  showToast('Bookmark हटाया','ok');
+  btn.closest('.q-item').remove();
+}
+
+// ══════════════════════════════════════════════
+// SECTION: PROGRESS — Session 5 (New)
+// ══════════════════════════════════════════════
+async function goProgress() {
+  renderShell('प्रगति लोड हो रही है...');
+  // Fetch all subjects + user's session_answers joined with questions for subject mapping
+  const {data:subjects}=await sb.from('subjects').select('id,name').order('sort_order');
+  const {data:sessions}=await sb.from('sessions').select('id,correct,total,mode,created_at').eq('user_id',currentUser.id).order('created_at',{ascending:false});
+  // Fetch session_answers with question micro_topic chain
+  const {data:answers}=await sb.from('session_answers').select('is_correct,is_skipped,questions(micro_topic_id,micro_topics(topic_id,topics(subject_id)))').eq('sessions.user_id',currentUser.id);
+
+  // Calculate overall stats
+  const totalSessions=(sessions||[]).length;
+  let totalQ=0,totalCorrect=0;
+  (sessions||[]).forEach(s=>{totalQ+=s.total;totalCorrect+=s.correct;});
+  const overallPct=totalQ?Math.round((totalCorrect/totalQ)*100):0;
+
+  // Subject-wise breakdown using session_answers
+  const subMap={};
+  (subjects||[]).forEach(s=>{subMap[s.id]={name:s.name,total:0,correct:0};});
+  (answers||[]).forEach(a=>{
+    const subId=a.questions?.micro_topics?.topics?.subject_id;
+    if(subId&&subMap[subId]){subMap[subId].total++;if(a.is_correct)subMap[subId].correct++;}
+  });
+
+  const root=document.getElementById('appRoot');
+  const subRows=(subjects||[]).map(s=>{
+    const d=subMap[s.id]||{total:0,correct:0};
+    const pct=d.total?Math.round((d.correct/d.total)*100):0;
+    return `<div style="margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;font-size:.85rem;font-weight:600;margin-bottom:3px">
+        <span>${s.name}</span><span style="color:var(--saffron)">${pct}% (${d.correct}/${d.total})</span>
+      </div>
+      <div class="prog-bar-wrap"><div class="prog-bar" style="width:${pct}%"></div></div>
+    </div>`;}).join('');
+
+  root.innerHTML=`
+  <div class="card"><div class="crumb"><span onclick="renderHome()">🏠 होम</span> › <span class="cur">प्रगति</span></div>
+    <div class="ctitle">📊 मेरी प्रगति</div>
+    <div class="stat-row">
+      <div class="stat-box"><div class="sv">${totalSessions}</div><div class="sl">कुल Quiz</div></div>
+      <div class="stat-box"><div class="sv">${totalQ}</div><div class="sl">कुल सवाल</div></div>
+      <div class="stat-box"><div class="sv">${overallPct}%</div><div class="sl">औसत Score</div></div>
+    </div>
+    <div class="ctitle" style="margin-top:5px">📖 Subject-wise प्रगति</div>
+    ${subRows||`<div class="empty-state"><div class="em-ic">📭</div>अभी कोई डेटा नहीं।</div>`}
+  </div>`;
+}
+
+// ══════════════════════════════════════════════
+// SECTION: WEAK TOPICS — Session 5 (New)
+// Called from Progress screen link below
+// ══════════════════════════════════════════════
+async function goWeakTopics() {
+  renderShell('Weak Topics लोड हो रहे हैं...');
+  // Fetch wrong answers with micro_topic info
+  const {data:wrongAnswers,error}=await sb.from('session_answers')
+    .select('questions(micro_topic_id,micro_topics(id,name,topic_id,topics(name,subjects(name))))')
+    .eq('is_correct',false).eq('is_skipped',false);
+
+  const root=document.getElementById('appRoot');
+  if(error){root.innerHTML=`<div class="card"><p>त्रुटि: ${error.message}</p></div>`;return;}
+
+  // Aggregate by micro_topic
+  const micMap={};
+  (wrongAnswers||[]).forEach(a=>{
+    const mt=a.questions?.micro_topics;
+    if(!mt)return;
+    const key=mt.id;
+    if(!micMap[key]) micMap[key]={name:mt.name,topic:mt.topics?.name||'',subject:mt.topics?.subjects?.name||'',count:0};
+    micMap[key].count++;
+  });
+
+  const sorted=Object.values(micMap).sort((a,b)=>b.count-a.count).slice(0,20);
+  if(!sorted.length){
+    root.innerHTML=`<div class="card"><div class="crumb"><span onclick="renderHome()">🏠 होम</span> › <span onclick="goProgress()">प्रगति</span> › <span class="cur">Weak Topics</span></div><div class="empty-state"><div class="em-ic">🎉</div>बहुत बढ़िया! अभी कोई Weak Topic नहीं।</div></div>`;
+    return;
+  }
+
+  const rows=sorted.map((t,i)=>`
+  <div class="q-item" style="display:flex;align-items:center;gap:12px">
+    <div style="font-size:1.3rem;font-weight:800;color:var(--saffron);min-width:32px">#${i+1}</div>
+    <div style="flex:1">
+      <div style="font-weight:700;font-size:.9rem">${t.name}</div>
+      <div style="font-size:.75rem;color:var(--muted)">${t.subject} › ${t.topic}</div>
+    </div>
+    <div style="background:#ffebee;color:#c62828;padding:4px 10px;border-radius:20px;font-size:.78rem;font-weight:700">${t.count} गलत</div>
+  </div>`).join('');
+
+  root.innerHTML=`<div class="card"><div class="crumb"><span onclick="renderHome()">🏠 होम</span> › <span onclick="goProgress()">प्रगति</span> › <span class="cur">Weak Topics</span></div>
+    <div class="ctitle">🔴 Weak Topics (Top ${sorted.length})</div>
+    ${rows}</div>`;
+}
+
+// ══════════════════════════════════════════════
+// SECTION: REVISION BANK — Session 5 (New, Spaced Repetition)
+// ══════════════════════════════════════════════
+async function goRevisionBank() {
+  renderShell('Revision Bank लोड हो रहा है...');
+  const today=new Date().toISOString().split('T')[0];
+  // Fetch all spaced_repetition entries with question data
+  const {data,error}=await sb.from('spaced_repetition')
+    .select('next_review_date,interval_days,questions(id,question,option_a,option_b,option_c,option_d,correct_option,difficulty,explanation)')
+    .eq('user_id',currentUser.id)
+    .order('next_review_date');
+
+  const root=document.getElementById('appRoot');
+  if(error){root.innerHTML=`<div class="card"><p>त्रुटि: ${error.message}</p></div>`;return;}
+  if(!data||data.length===0){
+    root.innerHTML=`<div class="card"><div class="crumb"><span onclick="renderHome()">🏠 होम</span> › <span class="cur">Revision Bank</span></div>
+      <div class="ctitle">🔁 Revision Bank</div>
+      <div class="empty-state"><div class="em-ic">📭</div>अभी Revision Bank खाली है।<br>Quiz खेलें — गलत सवाल यहाँ आ जाएंगे।</div></div>`;
+    return;
+  }
+
+  const due=data.filter(r=>r.next_review_date<=today&&r.questions);
+  const upcoming=data.filter(r=>r.next_review_date>today&&r.questions);
+
+  const dueHtml=due.length?due.map(r=>{const q=r.questions;return `
+    <div class="rev-item">
+      <div class="ri-q">${q.question}</div>
+      <span class="rev-badge due">आज करें</span>
+    </div>`;}).join(''):`<div class="empty-state" style="padding:10px"><div class="em-ic" style="font-size:1.4rem">✅</div>आज के लिए सब revision हो गई!</div>`;
+
+  const upHtml=upcoming.length?upcoming.slice(0,10).map(r=>{const q=r.questions;const daysLeft=Math.ceil((new Date(r.next_review_date)-new Date(today))/(86400000));return `
+    <div class="rev-item">
+      <div class="ri-q">${q.question}</div>
+      <span class="rev-badge ok">${daysLeft}दिन बाद</span>
+    </div>`;}).join(''):'';
+
+  const startBtn=due.length?`<button class="btn btn-primary" style="margin-bottom:14px" onclick="startRevisionQuiz(${JSON.stringify(due.map(r=>r.questions.id))})">📝 आज के ${due.length} सवाल Revise करें</button>`:'';
+
+  root.innerHTML=`<div class="card"><div class="crumb"><span onclick="renderHome()">🏠 होम</span> › <span class="cur">Revision Bank</span></div>
+    <div class="ctitle">🔁 Revision Bank</div>
+    <div class="stat-row" style="grid-template-columns:1fr 1fr">
+      <div class="stat-box"><div class="sv">${due.length}</div><div class="sl">आज due</div></div>
+      <div class="stat-box"><div class="sv">${data.length}</div><div class="sl">कुल tracked</div></div>
+    </div>
+    ${startBtn}
+    <div style="font-weight:700;font-size:.88rem;margin-bottom:8px">📌 आज करने वाले (${due.length})</div>${dueHtml}
+    ${upcoming.length?`<div style="font-weight:700;font-size:.88rem;margin:14px 0 8px">⏰ आगे आने वाले</div>${upHtml}`:''}
+  </div>`;
+}
+
+async function startRevisionQuiz(questionIds) {
+  if(!questionIds||!questionIds.length){showToast('कोई सवाल नहीं मिला','err');return;}
+  renderShell('सवाल लाए जा रहे हैं...');
+  const {data:qData,error}=await sb.from('questions').select('*').in('id',questionIds);
+  if(error||!qData||!qData.length){showToast('सवाल लाने में दिक्कत','err');goRevisionBank();return;}
+  const shuffled=fisherYatesShuffle(qData);
+  qzState={questions:shuffled,idx:0,answers:new Array(shuffled.length).fill(null),mode:'revision',
+    startedAt:Date.now(),timerMin:0,timerInterval:null,secondsLeft:null,locked:false};
+  qzBookmarks=new Set();
+  const qIds=shuffled.map(q=>q.id);
+  const {data:bms}=await sb.from('bookmarks').select('question_id').eq('user_id',currentUser.id).in('question_id',qIds);
+  if(bms) bms.forEach(b=>qzBookmarks.add(b.question_id));
+  renderQuizQuestion();
+}
+
+// ══════════════════════════════════════════════
+// SECTION: DAILY TARGET + STREAK — Session 5 (New)
+// ══════════════════════════════════════════════
+async function goDailyTarget() {
+  renderShell('Daily Target लोड हो रहा है...');
+  const today=new Date().toISOString().split('T')[0];
+
+  // Fetch today's goal
+  const {data:todayGoal}=await sb.from('daily_goals').select('*').eq('user_id',currentUser.id).eq('date',today).single().catch(()=>({data:null}));
+  // Fetch streak
+  const {data:streak}=await sb.from('streaks').select('*').eq('user_id',currentUser.id).single().catch(()=>({data:null}));
+  // Fetch last 30 days activity
+  const thirtyDaysAgo=new Date(Date.now()-30*86400000).toISOString().split('T')[0];
+  const {data:recentGoals}=await sb.from('daily_goals').select('date,achieved_count').eq('user_id',currentUser.id).gte('date',thirtyDaysAgo).order('date');
+
+  const goalCount=todayGoal?.goal_count||10;
+  const achieved=todayGoal?.achieved_count||0;
+  const pct=Math.min(100,Math.round((achieved/goalCount)*100));
+  const currentStreak=streak?.current_streak||0;
+  const longestStreak=streak?.longest_streak||0;
+
+  // Build 30-day calendar
+  const activeDays=new Set((recentGoals||[]).filter(g=>g.achieved_count>0).map(g=>g.date));
+  const calendarHtml=buildStreakCalendar(activeDays,today);
+
+  const root=document.getElementById('appRoot');
+  root.innerHTML=`
+  <div class="card"><div class="crumb"><span onclick="renderHome()">🏠 होम</span> › <span class="cur">Daily Target</span></div>
+    <div class="ctitle">🎯 Daily Target</div>
+    <div style="background:#f7f8fc;border-radius:12px;padding:16px;margin-bottom:14px;text-align:center">
+      <div style="font-size:.82rem;color:var(--muted);margin-bottom:4px">आज का लक्ष्य</div>
+      <div style="font-size:2rem;font-weight:800;color:var(--saffron)">${achieved} / ${goalCount}</div>
+      <div style="font-size:.78rem;color:var(--muted);margin-bottom:10px">सवाल हल किए</div>
+      <div class="prog-bar-wrap" style="height:14px"><div class="prog-bar" style="width:${pct}%"></div></div>
+      <div style="font-size:.8rem;font-weight:700;color:var(--saffron);margin-top:5px">${pct}% पूरा</div>
+    </div>
+    <div style="display:flex;gap:10px;margin-bottom:14px">
+      <input type="number" id="goalInput" value="${goalCount}" min="5" max="200" style="flex:1;padding:10px;border:1.5px solid #e0e4f0;border-radius:8px;font-family:inherit;font-size:.88rem;outline:none">
+      <button class="btn btn-primary" style="width:auto;padding:10px 18px" onclick="saveGoalTarget()">लक्ष्य बदलें</button>
+    </div>
+    <div class="ctitle">🔥 Streak</div>
+    <div class="stat-row">
+      <div class="stat-box"><div class="sv">${currentStreak}</div><div class="sl">Current 🔥</div></div>
+      <div class="stat-box"><div class="sv">${longestStreak}</div><div class="sl">सबसे लंबा 🏆</div></div>
+      <div class="stat-box"><div class="sv">${activeDays.size}</div><div class="sl">30 दिन में</div></div>
+    </div>
+    <div class="ctitle" style="margin-top:5px">📅 पिछले 30 दिन</div>
+    ${calendarHtml}
+    <div style="font-size:.7rem;color:var(--muted);margin-top:6px">🟧 = पढ़ाई की, ⬜ = नहीं की</div>
+    <div style="height:12px"></div>
+    <button class="btn btn-primary" onclick="goQuizSetup()">🎯 अभी पढ़ाई शुरू करें</button>
+  </div>`;
+}
+
+function buildStreakCalendar(activeDays,today) {
+  const days=[];
+  for(let i=29;i>=0;i--){
+    const d=new Date(Date.now()-i*86400000).toISOString().split('T')[0];
+    const day=new Date(d).getDate();
+    const isDone=activeDays.has(d);
+    const isToday=d===today;
+    days.push(`<div class="streak-day ${isDone?'done':''} ${isToday?'today':''}" title="${d}">${day}</div>`);
+  }
+  return `<div class="streak-grid">${days.join('')}</div>`;
+}
+
+async function saveGoalTarget() {
+  const today=new Date().toISOString().split('T')[0];
+  const newGoal=parseInt(document.getElementById('goalInput').value,10);
+  if(!newGoal||newGoal<1){showToast('वैध लक्ष्य दर्ज करें','err');return;}
+  const {data:existing}=await sb.from('daily_goals').select('id,achieved_count').eq('user_id',currentUser.id).eq('date',today).single().catch(()=>({data:null}));
+  if(existing){
+    await sb.from('daily_goals').update({goal_count:newGoal}).eq('id',existing.id);
+  } else {
+    await sb.from('daily_goals').insert({user_id:currentUser.id,date:today,goal_count:newGoal,achieved_count:0});
+  }
+  showToast(`लक्ष्य ${newGoal} सवाल रखा गया ✅`,'ok');
+  goDailyTarget();
 }
 
 // ══════════════════════════════════════════════
