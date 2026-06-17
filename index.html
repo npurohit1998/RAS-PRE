@@ -925,7 +925,7 @@ async function updateSpacedRepetition(questions,answers) {
     const q=questions[i], a=answers[i];
     if(!a||a.skipped) continue;
     // Fetch existing record
-    const {data:existing}=await sb.from('spaced_repetition').select('*').eq('user_id',currentUser.id).eq('question_id',q.id).single().catch(()=>({data:null}));
+    const {data:existing}=await sb.from('spaced_repetition').select('*').eq('user_id',currentUser.id).eq('question_id',q.id).maybeSingle();
     if(a.isCorrect){
       // Correct: increase interval (1→3→7→14→30)
       const intervals=[1,3,7,14,30];
@@ -945,7 +945,7 @@ async function updateSpacedRepetition(questions,answers) {
 // Session 5: Daily Target update
 async function updateDailyTarget(questionsAttempted) {
   const today=new Date().toISOString().split('T')[0];
-  const {data:existing}=await sb.from('daily_goals').select('*').eq('user_id',currentUser.id).eq('date',today).single().catch(()=>({data:null}));
+  const {data:existing}=await sb.from('daily_goals').select('*').eq('user_id',currentUser.id).eq('date',today).maybeSingle();
   if(existing){
     await sb.from('daily_goals').update({achieved_count:existing.achieved_count+questionsAttempted}).eq('id',existing.id);
   } else {
@@ -957,7 +957,7 @@ async function updateDailyTarget(questionsAttempted) {
 async function updateStreak() {
   const today=new Date().toISOString().split('T')[0];
   const yesterday=new Date(Date.now()-86400000).toISOString().split('T')[0];
-  const {data:existing}=await sb.from('streaks').select('*').eq('user_id',currentUser.id).single().catch(()=>({data:null}));
+  const {data:existing}=await sb.from('streaks').select('*').eq('user_id',currentUser.id).maybeSingle();
   if(!existing){
     await sb.from('streaks').insert({user_id:currentUser.id,current_streak:1,longest_streak:1,last_study_date:today});
     return;
@@ -1205,9 +1205,9 @@ async function goDailyTarget() {
   const today=new Date().toISOString().split('T')[0];
 
   // Fetch today's goal
-  const {data:todayGoal}=await sb.from('daily_goals').select('*').eq('user_id',currentUser.id).eq('date',today).single().catch(()=>({data:null}));
+  const {data:todayGoal}=await sb.from('daily_goals').select('*').eq('user_id',currentUser.id).eq('date',today).maybeSingle();
   // Fetch streak
-  const {data:streak}=await sb.from('streaks').select('*').eq('user_id',currentUser.id).single().catch(()=>({data:null}));
+  const {data:streak}=await sb.from('streaks').select('*').eq('user_id',currentUser.id).maybeSingle();
   // Fetch last 30 days activity
   const thirtyDaysAgo=new Date(Date.now()-30*86400000).toISOString().split('T')[0];
   const {data:recentGoals}=await sb.from('daily_goals').select('date,achieved_count').eq('user_id',currentUser.id).gte('date',thirtyDaysAgo).order('date');
@@ -1267,7 +1267,7 @@ async function saveGoalTarget() {
   const today=new Date().toISOString().split('T')[0];
   const newGoal=parseInt(document.getElementById('goalInput').value,10);
   if(!newGoal||newGoal<1){showToast('वैध लक्ष्य दर्ज करें','err');return;}
-  const {data:existing}=await sb.from('daily_goals').select('id,achieved_count').eq('user_id',currentUser.id).eq('date',today).single().catch(()=>({data:null}));
+  const {data:existing}=await sb.from('daily_goals').select('id,achieved_count').eq('user_id',currentUser.id).eq('date',today).maybeSingle();
   if(existing){
     await sb.from('daily_goals').update({goal_count:newGoal}).eq('id',existing.id);
   } else {
@@ -1282,7 +1282,7 @@ async function saveGoalTarget() {
 // ══════════════════════════════════════════════
 initAuth();
 
-  // ══════════════════════════════════════════════
+// ══════════════════════════════════════════════
 // SECTION: SERVICE WORKER REGISTRATION (Session 6)
 // ══════════════════════════════════════════════
 if ('serviceWorker' in navigator) {
